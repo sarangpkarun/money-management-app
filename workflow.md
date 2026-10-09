@@ -70,9 +70,17 @@ Goal: a usable lent/borrowed tracker with sync and security.
    - [x] Settings → History: settled entries, filters, search (opens from the temporary home until the Settings tab exists; PDF/CSV export is Phase 3)
    - [x] "Mark as unpaid" with confirmation (removes the last payment)
 7. Shell
-   - [ ] Bottom nav (Home, People, +, Reminders, Settings), theme tokens (light/dark palette), basic Home totals
+   - [x] Bottom nav (Home, People, +, Reminders, Settings), theme tokens (light/dark palette), basic Home totals (Reminders is a placeholder until Phase 2; Inter/Poppins font and the Light/Dark/System setting come in Phase 3)
 
 Exit criteria: testing-checklist items for partial payments, overpayment block, History/unpaid, autocomplete, offline sync, and security rules all pass. Internal build on both platforms.
+
+**Phase 1 exit check (2026-10-09): all build items done; remaining checks are manual**
+- [x] Partial payments, overpayment block, History and "mark as unpaid", autocomplete: covered by automated tests and tried on the Xiaomi phone as each feature landed
+- [x] Security rules: 13 emulator tests pass; Firestore rules deployed (Storage rules deploy when Storage is enabled)
+- [ ] Offline sync: add entries with no internet on the phone, then confirm they sync
+- [ ] Two-account check on the real project: one user cannot see another's data
+- [ ] Internal build on iPhone (needs a Mac; Android debug build works)
+
 
 ## Phase 2: EMI, instalments, reminders, dashboard
 Goal: scheduled payments and alarms.
@@ -137,3 +145,4 @@ Exit criteria: full testing checklist (section 9.2 of the product doc) green; no
 | 2026-10-09 | Interest is simple/compound on the original principal from the entry date, computed not stored, and frozen at `settledAt` once paid; payments are limited to principal + interest to date | Product doc 8.5; keeps a paid entry from reopening as interest accrues |
 | 2026-10-09 | "Mark as unpaid" removes the most recent payment (latest date, then the one recorded last) after a confirmation; History is just entries whose status is Paid | Balance is derived from payments, so reopening must remove one; no data is moved between collections |
 | 2026-10-09 | Person ledger running balance uses the People-list convention (positive = they owe you). Interest is its own row (dated today while open, the settled day once paid; before payments on the same day) so the last balance equals the header net | Keeps the ledger, the People list and the entry totals consistent |
+| 2026-10-09 | App shell: NavigationBar with a centre "+" that opens an add sheet instead of switching tabs; tabs kept alive with IndexedStack; theme from the product palette following the system light/dark setting | Simple and robust; the Light/Dark/System setting and custom font are Phase 3 |

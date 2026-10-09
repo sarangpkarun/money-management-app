@@ -58,6 +58,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       appBar: AppBar(
         title: const Text('People'),
         actions: [
+          IconButton(
+            tooltip: 'Add person',
+            icon: const Icon(Icons.person_add_alt_1),
+            onPressed: _addPerson,
+          ),
           PopupMenuButton<PeopleSort>(
             tooltip: 'Sort',
             icon: const Icon(Icons.sort),
@@ -69,11 +74,6 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
             ],
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Add person',
-        onPressed: _addPerson,
-        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [

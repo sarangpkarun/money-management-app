@@ -6,11 +6,9 @@ import 'auth/auth_gate.dart';
 import 'core/alarm/alarm_screen.dart';
 import 'core/alarm/alarm_service.dart';
 import 'core/data/firestore_setup.dart';
+import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
-import 'history/history_screen.dart';
-import 'people/people_screen.dart';
-import 'settings/profile_screen.dart';
-import 'transactions/entries_screen.dart';
+import 'shell/app_shell.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -56,115 +54,10 @@ class _MoneyManagerAppState extends State<MoneyManagerApp> {
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'Money Manager',
-      theme: ThemeData(colorSchemeSeed: const Color(0xFF3F51B5)),
-      home: const AuthGate(home: AlarmSpikeScreen()),
-    );
-  }
-}
-
-/// SPIKE screen (Phase 0). Replaced by the real app shell in Phase 1.
-class AlarmSpikeScreen extends StatefulWidget {
-  const AlarmSpikeScreen({super.key});
-
-  @override
-  State<AlarmSpikeScreen> createState() => _AlarmSpikeScreenState();
-}
-
-class _AlarmSpikeScreenState extends State<AlarmSpikeScreen> {
-  String _status = 'Initialising...';
-
-  @override
-  void initState() {
-    super.initState();
-    _setup();
-  }
-
-  Future<void> _setup() async {
-    await AlarmService.init();
-    await _refresh();
-  }
-
-  Future<void> _refresh() async {
-    final s = await AlarmService.status();
-    if (mounted) setState(() => _status = s.toString());
-  }
-
-  Future<void> _schedule(Duration after) async {
-    await AlarmService.schedule(id: 1, after: after);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Alarm set for ${after.inMinutes} min from now')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Alarm spike (Phase 0)'),
-        actions: [
-          IconButton(
-            tooltip: 'History',
-            icon: const Icon(Icons.history),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Entries',
-            icon: const Icon(Icons.receipt_long),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const EntriesScreen()),
-            ),
-          ),
-          IconButton(
-            tooltip: 'People',
-            icon: const Icon(Icons.people),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const PeopleScreen()),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Profile',
-            icon: const Icon(Icons.person),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Permissions: $_status'),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () async {
-                await AlarmService.requestPermissions();
-                await _refresh();
-              },
-              child: const Text('Request permissions'),
-            ),
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: () => _schedule(const Duration(minutes: 1)),
-              child: const Text('Schedule in 1 min'),
-            ),
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: () => _schedule(const Duration(minutes: 5)),
-              child: const Text('Schedule in 5 min'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: AlarmService.cancelAll,
-              child: const Text('Cancel all'),
-            ),
-          ],
-        ),
-      ),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
+      home: const AuthGate(home: AppShell()),
     );
   }
 }

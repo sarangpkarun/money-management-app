@@ -138,7 +138,7 @@ void main() {
     tester,
   ) async {
     await pumpPeople(tester);
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byTooltip('Add person'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pump();
