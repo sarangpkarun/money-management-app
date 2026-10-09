@@ -17,8 +17,8 @@ Goal: prove the riskiest part (alarms) and set up the project skeleton.
 - [x] Confirm current package versions and iOS support (firebase_*, flutter_local_notifications, fl_chart, pdf, csv, flutter_contacts, share_plus)
 - [x] CI: `flutter analyze` + `flutter test` on every push
 - [ ] **Alarm spike (Android):** exact alarm + full-screen intent + boot re-schedule; test app closed, screen locked, after restart, battery saver on
-- [ ] **Alarm spike (iPhone):** AlarmKit bridge on a real device; confirm minimum iOS version; local-notification fallback (about 30 s sound)
-- [ ] Test on Xiaomi, Oppo, Vivo, Samsung; record per-brand permission steps
+- [ ] (deferred: needs a Mac + iPhone) **Alarm spike (iPhone):** AlarmKit bridge on a real device; confirm minimum iOS version; local-notification fallback (about 30 s sound)
+- [ ] (deferred: needs the phones; Xiaomi 23127PN0CG / Android 16 in progress) Test on Xiaomi, Oppo, Vivo, Samsung; record per-brand permission steps
 - [ ] Write the decision: iPhone approach, minimum iOS version
 
 ### Package versions (confirmed 2026-10-09, Flutter 3.44.1)
@@ -37,12 +37,12 @@ Exit criteria: alarm rings on a real Android phone and a real iPhone with the ap
 Goal: a usable lent/borrowed tracker with sync and security.
 
 1. Data layer
-   - [ ] Money type (int paise) + formatter (₹, Indian/western grouping)
+   - [x] Money type (int paise) + formatter (₹, Indian/western grouping)
    - [ ] Firestore models + repositories: users, people, transactions, payments
    - [ ] Enable offline persistence
    - [ ] Payment write = Firestore transaction updating `paidTotal`, `balance`, `status` together
-   - [ ] Status engine (Pending / Partially Paid / Overdue / Paid, overdue priority) with unit tests
-   - [ ] Block overpayment
+   - [x] Status engine (Pending / Partially Paid / Overdue / Paid, overdue priority) with unit tests
+   - [x] Block overpayment
 2. Auth
    - [ ] Sign up (name, email, password) + verification email
    - [ ] Login, logout, forgot password
