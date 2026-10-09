@@ -13,6 +13,7 @@ class Payment {
     this.note,
     this.screenshotUrl,
     this.createdAt,
+    this.installment,
   });
 
   final String id;
@@ -25,6 +26,9 @@ class Payment {
   /// When the payment was recorded (separate from the day it was made).
   final DateTime? createdAt;
 
+  /// For an EMI purchase: which instalment this payment is towards.
+  final int? installment;
+
   Map<String, dynamic> toMap() => {
     'amount': amount.paise,
     'date': Timestamp.fromDate(date),
@@ -32,6 +36,7 @@ class Payment {
     'note': note,
     'screenshotUrl': screenshotUrl,
     if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+    if (installment != null) 'installment': installment,
   };
 
   factory Payment.fromMap(String id, Map<String, dynamic> m) => Payment(
@@ -42,6 +47,7 @@ class Payment {
     note: m['note'] as String?,
     screenshotUrl: m['screenshotUrl'] as String?,
     createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
+    installment: m['installment'] as int?,
   );
 }
 

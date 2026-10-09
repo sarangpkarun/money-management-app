@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../money/money.dart';
+import 'emi_plan.dart';
 import '../status/transaction_status.dart';
 
 enum TransactionType { lent, borrowed, emi, instalment }
@@ -30,6 +31,7 @@ class MoneyTransaction {
     this.lastActivityAt,
     this.date,
     this.notes,
+    this.emiPlan,
   });
 
   final String id;
@@ -51,6 +53,9 @@ class MoneyTransaction {
   /// The day the money changed hands (the user can back-date it).
   final DateTime? date;
   final String? notes;
+
+  /// Terms and schedule when this is an EMI purchase.
+  final EmiPlan? emiPlan;
 
   DateTime get entryDate => date ?? createdAt;
 
@@ -80,6 +85,8 @@ class MoneyTransaction {
     'lastActivityAt': Timestamp.fromDate(lastActivity),
     'date': date == null ? null : Timestamp.fromDate(date!),
     'notes': notes,
+    if (emiPlan != null) 'emiPlan': emiPlan!.toMap(),
+    if (emiPlan != null) 'schedule': emiPlan!.scheduleToMaps(),
   };
 
   factory MoneyTransaction.fromMap(String id, Map<String, dynamic> m) {
@@ -104,6 +111,12 @@ class MoneyTransaction {
       lastActivityAt: ts('lastActivityAt'),
       date: ts('date'),
       notes: m['notes'] as String?,
+      emiPlan: m['emiPlan'] == null
+          ? null
+          : EmiPlan.fromMaps(
+              Map<String, dynamic>.from(m['emiPlan'] as Map),
+              (m['schedule'] as List?) ?? const [],
+            ),
     );
   }
 }

@@ -87,8 +87,8 @@ Goal: scheduled payments and alarms.
 
 - [x] Schedule engine (pure Dart, heavily tested): EMI formula, 0% case, principal/interest split, month-end date clamping, last-EMI rounding fix (`lib/core/emi/`; no screens or storage yet)
 - [x] Validate EMI against a bank calculator for 3+ loans (incl. 0%) (checked against published tables from Scripbox, NoBroker and StockCalc, 14 loans, all EMIs match; these are finance-site calculators, not a bank's own, and the 0% case is checked by arithmetic. Optional: confirm one loan against your own bank's calculator)
-- [ ] EMI purchase form + schedule screen (green/amber/red dots, summary card)
-- [ ] Mark single EMI paid (date, amount, mode)
+- [x] EMI purchase form + schedule screen (green/amber/red dots, summary card) (bill photo comes with attachments in Phase 3)
+- [x] Mark single EMI paid (date, amount, mode) (part payments allowed; edit/delete a payment reverses its instalment)
 - [ ] Pay-to-person instalments: generate, skip month, change amount, extra payment
 - [ ] Foreclosure / part-prepayment calculator (labelled as estimate); late fee and no-cost EMI options
 - [ ] Reminders: CRUD, repeat rules, snooze (5/10/15), custom tone/volume/vibration
@@ -147,3 +147,4 @@ Exit criteria: full testing checklist (section 9.2 of the product doc) green; no
 | 2026-10-09 | Person ledger running balance uses the People-list convention (positive = they owe you). Interest is its own row (dated today while open, the settled day once paid; before payments on the same day) so the last balance equals the header net | Keeps the ledger, the People list and the entry totals consistent |
 | 2026-10-09 | App shell: NavigationBar with a centre "+" that opens an add sheet instead of switching tabs; tabs kept alive with IndexedStack; theme from the product palette following the system light/dark setting | Simple and robust; the Light/Dark/System setting and custom font are Phase 3 |
 | 2026-10-09 | EMI schedule: whole-paisa maths, EMI and each month's interest rounded half-up, last instalment clears the balance; due dates measured from the original start day. The last EMI differs from the regular one by up to about ((1+r)^n - 1)/r paise (n paise at 0%), not just n paise | Rounding error compounds with rate and tenure; found while testing a Rs 1,000 loan at 24% for 84 months |
+| 2026-10-09 | An EMI purchase is an `emi` transaction: store or bank is a Person, `totalAmount` = total payable (down payment not owed, interest inside the instalments), and the schedule lives in a `schedule` ARRAY on the transaction document (not the `schedule/{id}` subcollection of the product doc) with `dueDate` kept equal to the next unpaid instalment | A Firestore transaction cannot query a subcollection, and a payment must update the instalment, the totals and the next due date atomically; 600 rows is about 60 KB, far under the 1 MB document limit |

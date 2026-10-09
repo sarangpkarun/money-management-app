@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../core/models/money_transaction.dart';
+import '../transactions/add_emi_screen.dart';
 import '../transactions/add_entry_screen.dart';
 
-/// The "+" in the bottom bar: choose what to record. Only lent and borrowed for
-/// now; EMI, instalment plan and reminder join in Phase 2.
+/// The "+" in the bottom bar: choose what to record. Lent, borrowed and EMI
+/// purchase for now; instalment plan and reminder join later in Phase 2.
 Future<void> showAddEntrySheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -50,6 +51,17 @@ Future<void> showAddEntrySheet(BuildContext context) {
                 );
               },
             ),
+          ListTile(
+            leading: const Icon(Icons.phone_iphone),
+            title: const Text('EMI purchase'),
+            subtitle: const Text('Something bought on monthly instalments'),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const AddEmiScreen()),
+              );
+            },
+          ),
         ],
       ),
     ),

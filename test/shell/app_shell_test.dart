@@ -162,6 +162,18 @@ void main() {
       expect(find.text('Hello, Sarang'), findsOneWidget);
     });
 
+    testWidgets('"EMI purchase" opens the EMI form', (tester) async {
+      await pumpShell(tester);
+      await tester.tap(tab('Add'));
+      await tester.pumpAndSettle();
+      expect(find.text('EMI purchase'), findsOneWidget);
+      await tester.tap(find.text('EMI purchase'));
+      await tester.pumpAndSettle();
+      expect(find.text('Monthly EMI'), findsNothing); // no preview yet
+      expect(find.text('Total price'), findsOneWidget);
+      expect(find.text('Store or bank'), findsOneWidget);
+    });
+
     testWidgets('"Money I gave" opens Add entry on Lent', (tester) async {
       await pumpShell(tester);
       await tester.tap(tab('Add'));

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../emi/emi_schedule.dart';
+import '../models/emi_plan.dart';
 import '../models/money_transaction.dart';
 import '../money/money.dart';
 import '../status/transaction_status.dart';
@@ -103,6 +105,59 @@ class TransactionRepository {
       notes: t.notes,
     );
     return (await _paths.transactions.add(fresh.toMap())).id;
+  }
+
+  /// Creates an EMI purchase: generates the schedule (throws [EmiInputError] for
+  /// bad terms), and saves an `emi` entry whose total is everything due in
+  /// instalments (the down payment is not owed). The interest is already inside
+  /// the instalments, so the entry itself carries none.
+  Future<String> addEmi({
+    required String personId,
+    required String personName,
+    required String title,
+    required Money price,
+    Money downPayment = Money.zero,
+    required double annualRatePercent,
+    required int months,
+    required DateTime startDate,
+    String? notes,
+  }) async {
+    final schedule = generateEmiSchedule(
+      price: price,
+      downPayment: downPayment,
+      annualRatePercent: annualRatePercent,
+      months: months,
+      startDate: startDate,
+    );
+    final plan = EmiPlan.fromSchedule(
+      schedule,
+      price: price,
+      downPayment: downPayment,
+      annualRatePercent: annualRatePercent,
+      startDate: startDate,
+    );
+    final now = _now();
+    final firstDue = plan.rows.first.dueDate;
+    final entry = MoneyTransaction(
+      type: TransactionType.emi,
+      personId: personId,
+      personName: personName,
+      title: title,
+      totalAmount: plan.totalPayable,
+      status: computeStatus(
+        total: plan.totalPayable,
+        paid: Money.zero,
+        dueDate: firstDue,
+        now: now,
+      ),
+      dueDate: firstDue,
+      createdAt: now,
+      lastActivityAt: now,
+      date: now,
+      notes: notes,
+      emiPlan: plan,
+    );
+    return (await _paths.transactions.add(entry.toMap())).id;
   }
 
   /// Deletes the transaction and its payments.

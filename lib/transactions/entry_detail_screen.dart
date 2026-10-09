@@ -5,6 +5,8 @@ import '../core/data/providers.dart';
 import '../core/interest/interest.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/payment.dart';
+import 'emi_payment_sheet.dart';
+import 'emi_schedule_view.dart';
 import 'entry_form_logic.dart';
 import 'payment_sheet.dart';
 import 'status_badge.dart';
@@ -42,6 +44,11 @@ class EntryDetailScreen extends ConsumerWidget {
     if (confirmed != true) return;
     await ref.read(transactionRepositoryProvider).delete(t.id);
     if (context.mounted) Navigator.of(context).pop();
+  }
+
+  void _payNextEmi(BuildContext context, MoneyTransaction t) {
+    final next = t.emiPlan!.nextUnpaid;
+    if (next != null) showEmiPaymentSheet(context, txn: t, row: next);
   }
 
   /// Settled entries offer "Mark as unpaid" instead of a payment button.
@@ -142,8 +149,12 @@ class EntryDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: FilledButton(
-                  onPressed: () => showPaymentSheet(context, txn: t),
-                  child: Text(payActionLabel(t)),
+                  onPressed: () => t.emiPlan != null
+                      ? _payNextEmi(context, t)
+                      : showPaymentSheet(context, txn: t),
+                  child: Text(
+                    t.emiPlan != null ? 'Pay next EMI' : payActionLabel(t),
+                  ),
                 ),
               ),
             ),
@@ -188,6 +199,14 @@ class EntryDetailScreen extends ConsumerWidget {
           if (t.type == TransactionType.borrowed)
             Text('Repayment: ${repaymentLabel(t.repaymentType)}'),
           if (t.notes != null) ...[const SizedBox(height: 8), Text(t.notes!)],
+          if (t.emiPlan != null) ...[
+            const SizedBox(height: 24),
+            EmiScheduleView(
+              plan: t.emiPlan!,
+              now: DateTime.now(),
+              onPayRow: (row) => showEmiPaymentSheet(context, txn: t, row: row),
+            ),
+          ],
           const SizedBox(height: 24),
           Text('Payments', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),

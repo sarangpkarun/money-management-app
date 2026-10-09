@@ -164,6 +164,18 @@ void main() {
     expect(events.last.flow, LedgerFlow.none);
   });
 
+  test('an EMI purchase reads as an EMI purchase and counts as owed', () {
+    final events = buildLedger([
+      TransactionWithPayments(txn('e', TransactionType.emi, 12000), [
+        pay(3000, DateTime(2026, 9, 15)),
+      ]),
+    ], now: now);
+    expect(events[0].label, 'EMI purchase ₹12,000');
+    expect(events[1].label, 'Paid ₹3,000');
+    expect(balances(events), [-12000, -9000]);
+    expect(events[0].flow, LedgerFlow.moneyIn);
+  });
+
   group('interest', () {
     test('an open loan with interest ends at principal plus interest', () {
       final loan = txn(

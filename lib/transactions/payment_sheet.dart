@@ -8,6 +8,7 @@ import '../core/models/money_transaction.dart';
 import '../core/models/payment.dart';
 import '../core/money/money.dart';
 import '../core/status/transaction_status.dart';
+import '../core/ui/format.dart';
 
 const _modeLabels = {
   PaymentMode.cash: 'Cash',
@@ -44,7 +45,7 @@ class _PaymentSheet extends ConsumerStatefulWidget {
 
 class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   late final _amount = TextEditingController(
-    text: _plain(
+    text: plainAmount(
       widget.existing?.amount ?? outstanding(widget.txn, DateTime.now()),
     ),
   );
@@ -58,24 +59,22 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
 
   /// What the amount may be at most: the balance, plus what the payment being
   /// edited already covers.
-  Money get _available =>
-      outstanding(widget.txn, DateTime.now()) +
-      (widget.existing?.amount ?? Money.zero);
+  Money get _available {
+    final existing = widget.existing;
+    // A payment towards an EMI instalment is limited by that instalment.
+    final row = existing?.installment == null
+        ? null
+        : widget.txn.emiPlan?.rowNumbered(existing!.installment!);
+    if (row != null) return row.remaining + existing!.amount;
+    return outstanding(widget.txn, DateTime.now()) +
+        (existing?.amount ?? Money.zero);
+  }
 
   @override
   void dispose() {
     _amount.dispose();
     _note.dispose();
     super.dispose();
-  }
-
-  /// "500" or "500.50": editable text with no symbol or grouping.
-  static String _plain(Money m) {
-    final rupees = m.paise ~/ 100;
-    final paise = m.paise % 100;
-    return paise == 0
-        ? '$rupees'
-        : '$rupees.${paise.toString().padLeft(2, '0')}';
   }
 
   String? _validate(Money? amount) {
