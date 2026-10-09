@@ -169,6 +169,75 @@ void main() {
     });
   });
 
+  group('entry details', () {
+    test('date and notes round-trip; date falls back to createdAt', () async {
+      final personId = await people.add(Person(name: 'Asha', createdAt: now));
+      final id = await txns.add(
+        MoneyTransaction(
+          type: TransactionType.borrowed,
+          personId: personId,
+          personName: 'Asha',
+          title: 'Rent help',
+          totalAmount: Money.fromRupees(500),
+          date: DateTime(2026, 9, 1),
+          notes: 'pay by Diwali',
+          createdAt: now,
+        ),
+      );
+      final t = (await txns.get(id))!;
+      expect(t.date, DateTime(2026, 9, 1));
+      expect(t.notes, 'pay by Diwali');
+      expect(t.entryDate, DateTime(2026, 9, 1));
+
+      final bare = MoneyTransaction(
+        type: TransactionType.lent,
+        personId: 'p',
+        personName: 'A',
+        title: 't',
+        totalAmount: Money.fromRupees(1),
+        createdAt: now,
+      );
+      expect(bare.entryDate, now);
+    });
+
+    test('watchOne emits the transaction and null once deleted', () async {
+      final id = await newTxn();
+      expect((await txns.watchOne(id).first)!.title, 'Loan');
+      await txns.delete(id);
+      expect(await txns.watchOne(id).first, isNull);
+    });
+
+    test('update changes editable fields and recomputes status', () async {
+      final id = await newTxn(due: DateTime(2026, 12, 1));
+      await payments.add(id, pay(300));
+      final t = (await txns.get(id))!;
+      expect(t.status, TransactionStatus.partiallyPaid);
+
+      // Move the due date into the past: now overdue; amounts untouched.
+      await txns.update(
+        id,
+        title: 'Loan (renamed)',
+        notes: 'chase',
+        dueDate: DateTime(2026, 10, 1),
+        date: DateTime(2026, 9, 15),
+      );
+      final u = (await txns.get(id))!;
+      expect(u.title, 'Loan (renamed)');
+      expect(u.notes, 'chase');
+      expect(u.date, DateTime(2026, 9, 15));
+      expect(u.status, TransactionStatus.overdue);
+      expect(u.paidTotal, Money.fromRupees(300));
+    });
+
+    test('update can clear the due date', () async {
+      final id = await newTxn(due: DateTime(2026, 10, 1));
+      await txns.update(id, title: 'Loan', clearDueDate: true);
+      final u = (await txns.get(id))!;
+      expect(u.dueDate, isNull);
+      expect(u.status, TransactionStatus.pending);
+    });
+  });
+
   group('people', () {
     test(
       'renaming a person updates personName on their transactions',

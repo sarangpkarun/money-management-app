@@ -37,6 +37,48 @@ class TransactionRepository {
     return data == null ? null : MoneyTransaction.fromMap(doc.id, data);
   }
 
+  Stream<MoneyTransaction?> watchOne(String id) =>
+      _paths.transactions.doc(id).snapshots().map((s) {
+        final data = s.data();
+        return data == null ? null : MoneyTransaction.fromMap(s.id, data);
+      });
+
+  /// Edits the descriptive fields. Amounts are untouched; status is recomputed
+  /// because the due date may have moved.
+  Future<void> update(
+    String id, {
+    required String title,
+    String? notes,
+    DateTime? dueDate,
+    bool clearDueDate = false,
+    DateTime? date,
+  }) {
+    final ref = _paths.transactions.doc(id);
+    return _paths.db.runTransaction((txn) async {
+      final current = MoneyTransaction.fromMap(
+        id,
+        (await txn.get(ref)).data()!,
+      );
+      final newDue = clearDueDate ? null : (dueDate ?? current.dueDate);
+      final status = computeStatus(
+        total: current.totalAmount,
+        paid: current.paidTotal,
+        dueDate: newDue,
+        now: _now(),
+      );
+      txn.update(ref, {
+        'title': title,
+        'notes': notes,
+        'dueDate': newDue == null ? null : Timestamp.fromDate(newDue),
+        'date': (date ?? current.date) == null
+            ? null
+            : Timestamp.fromDate((date ?? current.date)!),
+        'status': status.name,
+        'lastActivityAt': Timestamp.fromDate(_now()),
+      });
+    });
+  }
+
   /// Creates a transaction with nothing paid; status comes from the due date.
   Future<String> add(MoneyTransaction t) async {
     final fresh = MoneyTransaction(
@@ -56,6 +98,8 @@ class TransactionRepository {
       interestRate: t.interestRate,
       createdAt: t.createdAt,
       lastActivityAt: _now(),
+      date: t.date,
+      notes: t.notes,
     );
     return (await _paths.transactions.add(fresh.toMap())).id;
   }

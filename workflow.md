@@ -62,9 +62,9 @@ Goal: a usable lent/borrowed tracker with sync and security.
    - [x] Name autocomplete with recent-first, balance, and "Add 'Name' as new person"
    - [ ] Person ledger timeline with running balance
 5. Transactions
-   - [ ] Add entry screen (Lent / Borrowed segmented), amount, dates, notes
-   - [ ] Entry detail: progress bar, payment list, Receive Payment / Pay Now bottom sheet
-   - [ ] Edit/delete a payment; recompute balance from payments
+   - [x] Add entry screen (Lent / Borrowed segmented), amount, dates, notes
+   - [x] Entry detail: progress bar, payment list, Receive Payment / Pay Now bottom sheet
+   - [x] Edit/delete a payment; recompute balance from payments
    - [ ] Optional interest on borrowed (simple, compound) and repayment type
 6. History
    - [ ] Settings → History: settled entries, filters, search

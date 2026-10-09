@@ -25,11 +25,17 @@ class PersonAutocompleteField extends ConsumerWidget {
   const PersonAutocompleteField({
     super.key,
     required this.onSelected,
+    this.onTextChanged,
+    this.errorText,
     this.label = 'Person',
   });
 
   /// Called with the chosen person; a newly added person already has its id.
   final ValueChanged<Person> onSelected;
+
+  /// Fired as the user types, so a form can drop a stale selection.
+  final ValueChanged<String>? onTextChanged;
+  final String? errorText;
   final String label;
 
   Iterable<_Option> _options(WidgetRef ref, String text) {
@@ -65,7 +71,8 @@ class PersonAutocompleteField extends ConsumerWidget {
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(labelText: label),
+          onChanged: onTextChanged,
+          decoration: InputDecoration(labelText: label, errorText: errorText),
         );
       },
       optionsViewBuilder: (context, onSelect, options) {

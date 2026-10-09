@@ -9,6 +9,7 @@ import 'core/data/firestore_setup.dart';
 import 'firebase_options.dart';
 import 'people/people_screen.dart';
 import 'settings/profile_screen.dart';
+import 'transactions/entries_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -101,6 +102,13 @@ class _AlarmSpikeScreenState extends State<AlarmSpikeScreen> {
       appBar: AppBar(
         title: const Text('Alarm spike (Phase 0)'),
         actions: [
+          IconButton(
+            tooltip: 'Entries',
+            icon: const Icon(Icons.receipt_long),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const EntriesScreen()),
+            ),
+          ),
           IconButton(
             tooltip: 'People',
             icon: const Icon(Icons.people),

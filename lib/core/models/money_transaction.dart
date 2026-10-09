@@ -23,6 +23,8 @@ class MoneyTransaction {
     required this.createdAt,
     this.settledAt,
     this.lastActivityAt,
+    this.date,
+    this.notes,
   });
 
   final String id;
@@ -39,6 +41,12 @@ class MoneyTransaction {
   final DateTime createdAt;
   final DateTime? settledAt;
   final DateTime? lastActivityAt;
+
+  /// The day the money changed hands (the user can back-date it).
+  final DateTime? date;
+  final String? notes;
+
+  DateTime get entryDate => date ?? createdAt;
 
   /// When something last happened on this entry (created or a payment written).
   DateTime get lastActivity => lastActivityAt ?? createdAt;
@@ -63,6 +71,8 @@ class MoneyTransaction {
     'createdAt': Timestamp.fromDate(createdAt),
     'settledAt': settledAt == null ? null : Timestamp.fromDate(settledAt!),
     'lastActivityAt': Timestamp.fromDate(lastActivity),
+    'date': date == null ? null : Timestamp.fromDate(date!),
+    'notes': notes,
   };
 
   factory MoneyTransaction.fromMap(String id, Map<String, dynamic> m) {
@@ -82,6 +92,8 @@ class MoneyTransaction {
       createdAt: ts('createdAt')!,
       settledAt: ts('settledAt'),
       lastActivityAt: ts('lastActivityAt'),
+      date: ts('date'),
+      notes: m['notes'] as String?,
     );
   }
 }
