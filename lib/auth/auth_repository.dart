@@ -14,7 +14,9 @@ String authErrorMessage(String code) => switch (code) {
   'network-request-failed' => 'No internet connection. Try again.',
   'too-many-requests' => 'Too many attempts. Please wait and try again.',
   'user-disabled' => 'This account has been disabled.',
-  _ => 'Something went wrong. Please try again.',
+  'operation-not-allowed' || 'configuration-not-found' =>
+    'Email/password sign-in is not enabled for this project yet.',
+  _ => 'Something went wrong ($code). Please try again.',
 };
 
 class AuthFailure implements Exception {
