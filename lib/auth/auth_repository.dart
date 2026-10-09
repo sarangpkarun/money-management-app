@@ -13,6 +13,7 @@ String authErrorMessage(String code) => switch (code) {
   'invalid-email' => 'Enter a valid email address.',
   'network-request-failed' => 'No internet connection. Try again.',
   'too-many-requests' => 'Too many attempts. Please wait and try again.',
+  'requires-recent-login' => 'For security, please log in again and retry.',
   'user-disabled' => 'This account has been disabled.',
   'operation-not-allowed' || 'configuration-not-found' =>
     'Email/password sign-in is not enabled for this project yet.',
@@ -86,6 +87,20 @@ class AuthRepository {
       );
 
   Future<void> signOut() => _auth.signOut();
+
+  Future<void> updateDisplayName(String name) =>
+      _guard(() async => _auth.currentUser?.updateDisplayName(name.trim()));
+
+  /// Re-checks the password, erases all the user's Firestore data, then deletes
+  /// the account. (Cloud Functions cleanup is added in Phase 2 as a backstop.)
+  Future<void> deleteAccount(String password) => _guard(() async {
+    final user = _auth.currentUser!;
+    await user.reauthenticateWithCredential(
+      EmailAuthProvider.credential(email: user.email!, password: password),
+    );
+    await UserRepository(_db, user.uid).deleteAllData();
+    await user.delete();
+  });
 
   Future<void> sendPasswordReset(String email) =>
       _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));

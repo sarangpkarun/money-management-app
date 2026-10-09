@@ -51,8 +51,8 @@ Goal: a usable lent/borrowed tracker with sync and security.
 2. Auth
    - [x] Sign up (name, email, password) + verification email
    - [x] Login, logout, forgot password
-   - [ ] Profile: name, currency, timezone
-   - [ ] Delete account (client flow; function cleanup comes in Phase 2)
+   - [x] Profile: name, currency, timezone
+   - [x] Delete account (client flow; function cleanup comes in Phase 2)
 3. Security
    - [ ] Firestore + Storage rules (own uid + email_verified)
    - [ ] Rules tests with the emulator (cross-user read/write denied)

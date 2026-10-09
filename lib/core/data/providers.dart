@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/app_user.dart';
 import 'payment_repository.dart';
 import 'people_repository.dart';
 import 'transaction_repository.dart';
@@ -38,4 +39,8 @@ final paymentRepositoryProvider = Provider(
 
 final userRepositoryProvider = Provider(
   (ref) => UserRepository(ref.watch(firestoreProvider), ref.watch(uidProvider)),
+);
+
+final currentProfileProvider = StreamProvider<AppUser?>(
+  (ref) => ref.watch(userRepositoryProvider).watch(),
 );
