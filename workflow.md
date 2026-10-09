@@ -43,9 +43,9 @@ Goal: a usable lent/borrowed tracker with sync and security.
 
 1. Data layer
    - [x] Money type (int paise) + formatter (₹, Indian/western grouping)
-   - [ ] Firestore models + repositories: users, people, transactions, payments
-   - [ ] Enable offline persistence
-   - [ ] Payment write = Firestore transaction updating `paidTotal`, `balance`, `status` together
+   - [x] Firestore models + repositories: users, people, transactions, payments
+   - [x] Enable offline persistence
+   - [x] Payment write = Firestore transaction updating `paidTotal`, `balance`, `status` together
    - [x] Status engine (Pending / Partially Paid / Overdue / Paid, overdue priority) with unit tests
    - [x] Block overpayment
 2. Auth

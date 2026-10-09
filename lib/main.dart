@@ -1,13 +1,19 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/alarm/alarm_screen.dart';
 import 'core/alarm/alarm_service.dart';
+import 'core/data/firestore_setup.dart';
+import 'firebase_options.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MoneyManagerApp());
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  initFirestore();
+  runApp(const ProviderScope(child: MoneyManagerApp()));
 }
 
 class MoneyManagerApp extends StatefulWidget {
