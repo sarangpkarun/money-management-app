@@ -85,8 +85,8 @@ Exit criteria: testing-checklist items for partial payments, overpayment block, 
 ## Phase 2: EMI, instalments, reminders, dashboard
 Goal: scheduled payments and alarms.
 
-- [ ] Schedule engine (pure Dart, heavily tested): EMI formula, 0% case, principal/interest split, month-end date clamping, last-EMI rounding fix
-- [ ] Validate EMI against a bank calculator for 3+ loans (incl. 0%)
+- [x] Schedule engine (pure Dart, heavily tested): EMI formula, 0% case, principal/interest split, month-end date clamping, last-EMI rounding fix (`lib/core/emi/`; no screens or storage yet)
+- [x] Validate EMI against a bank calculator for 3+ loans (incl. 0%) (checked against published tables from Scripbox, NoBroker and StockCalc, 14 loans, all EMIs match; these are finance-site calculators, not a bank's own, and the 0% case is checked by arithmetic. Optional: confirm one loan against your own bank's calculator)
 - [ ] EMI purchase form + schedule screen (green/amber/red dots, summary card)
 - [ ] Mark single EMI paid (date, amount, mode)
 - [ ] Pay-to-person instalments: generate, skip month, change amount, extra payment
@@ -146,3 +146,4 @@ Exit criteria: full testing checklist (section 9.2 of the product doc) green; no
 | 2026-10-09 | "Mark as unpaid" removes the most recent payment (latest date, then the one recorded last) after a confirmation; History is just entries whose status is Paid | Balance is derived from payments, so reopening must remove one; no data is moved between collections |
 | 2026-10-09 | Person ledger running balance uses the People-list convention (positive = they owe you). Interest is its own row (dated today while open, the settled day once paid; before payments on the same day) so the last balance equals the header net | Keeps the ledger, the People list and the entry totals consistent |
 | 2026-10-09 | App shell: NavigationBar with a centre "+" that opens an add sheet instead of switching tabs; tabs kept alive with IndexedStack; theme from the product palette following the system light/dark setting | Simple and robust; the Light/Dark/System setting and custom font are Phase 3 |
+| 2026-10-09 | EMI schedule: whole-paisa maths, EMI and each month's interest rounded half-up, last instalment clears the balance; due dates measured from the original start day. The last EMI differs from the regular one by up to about ((1+r)^n - 1)/r paise (n paise at 0%), not just n paise | Rounding error compounds with rate and tenure; found while testing a Rs 1,000 loan at 24% for 84 months |
