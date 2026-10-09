@@ -54,7 +54,7 @@ Goal: a usable lent/borrowed tracker with sync and security.
    - [x] Profile: name, currency, timezone
    - [x] Delete account (client flow; function cleanup comes in Phase 2)
 3. Security
-   - [ ] Firestore + Storage rules (own uid + email_verified)
+   - [x] Firestore + Storage rules (own uid + email_verified) (Firestore rules deployed 2026-10-09; Storage rules written and tested, deploy once Storage is enabled)
    - [x] Rules tests with the emulator (cross-user read/write denied)
 4. People
    - [ ] People list: initials avatar, net amount colours, search, filters, sort
