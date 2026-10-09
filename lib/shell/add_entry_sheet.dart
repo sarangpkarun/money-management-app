@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/models/money_transaction.dart';
 import '../transactions/add_emi_screen.dart';
+import '../reminders/reminder_form_screen.dart';
 import '../transactions/add_entry_screen.dart';
 import '../transactions/add_instalment_screen.dart';
 
@@ -74,6 +75,19 @@ Future<void> showAddEntrySheet(BuildContext context) {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const AddInstalmentScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.alarm_add),
+              title: const Text('Reminder'),
+              subtitle: const Text('A one-off or repeating alert'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ReminderFormScreen(),
                   ),
                 );
               },

@@ -8,6 +8,7 @@ import 'package:money_manager/auth/auth_repository.dart';
 import 'package:money_manager/core/data/payment_repository.dart';
 import 'package:money_manager/core/data/people_repository.dart';
 import 'package:money_manager/core/data/providers.dart';
+import 'package:money_manager/core/data/reminder_repository.dart';
 import 'package:money_manager/core/data/transaction_repository.dart';
 import 'package:money_manager/core/data/user_repository.dart';
 import 'package:money_manager/core/models/app_user.dart';
@@ -43,6 +44,9 @@ void main() {
       ProviderScope(
         overrides: [
           peopleRepositoryProvider.overrideWithValue(people),
+          reminderRepositoryProvider.overrideWithValue(
+            ReminderRepository(db, 'u1'),
+          ),
           transactionRepositoryProvider.overrideWithValue(txns),
           paymentRepositoryProvider.overrideWithValue(
             PaymentRepository(db, 'u1'),
@@ -107,7 +111,7 @@ void main() {
 
       await tester.tap(tab('Reminders'));
       await tester.pumpAndSettle();
-      expect(find.text('Reminders and alarms are coming soon'), findsOneWidget);
+      expect(find.text('No reminders yet'), findsOneWidget);
 
       await tester.tap(tab('Settings'));
       await tester.pumpAndSettle();
@@ -183,6 +187,15 @@ void main() {
       await tester.tap(find.text('Pay in instalments'));
       await tester.pumpAndSettle();
       expect(find.text('Person you owe'), findsOneWidget);
+    });
+
+    testWidgets('"Reminder" opens the reminder form', (tester) async {
+      await pumpShell(tester);
+      await tester.tap(tab('Add'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reminder').last);
+      await tester.pumpAndSettle();
+      expect(find.text('New reminder'), findsOneWidget);
     });
 
     testWidgets('"Money I gave" opens Add entry on Lent', (tester) async {

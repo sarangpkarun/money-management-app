@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/app_user.dart';
 import 'payment_repository.dart';
 import 'people_repository.dart';
+import 'reminder_repository.dart';
 import 'transaction_repository.dart';
 import 'user_repository.dart';
 
@@ -43,4 +44,9 @@ final userRepositoryProvider = Provider(
 
 final currentProfileProvider = StreamProvider<AppUser?>(
   (ref) => ref.watch(userRepositoryProvider).watch(),
+);
+
+final reminderRepositoryProvider = Provider(
+  (ref) =>
+      ReminderRepository(ref.watch(firestoreProvider), ref.watch(uidProvider)),
 );
