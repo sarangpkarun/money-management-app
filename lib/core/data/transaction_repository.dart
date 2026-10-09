@@ -55,6 +55,7 @@ class TransactionRepository {
       interestType: t.interestType,
       interestRate: t.interestRate,
       createdAt: t.createdAt,
+      lastActivityAt: _now(),
     );
     return (await _paths.transactions.add(fresh.toMap())).id;
   }

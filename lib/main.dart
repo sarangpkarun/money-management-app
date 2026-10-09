@@ -7,6 +7,7 @@ import 'core/alarm/alarm_screen.dart';
 import 'core/alarm/alarm_service.dart';
 import 'core/data/firestore_setup.dart';
 import 'firebase_options.dart';
+import 'people/people_screen.dart';
 import 'settings/profile_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -100,6 +101,13 @@ class _AlarmSpikeScreenState extends State<AlarmSpikeScreen> {
       appBar: AppBar(
         title: const Text('Alarm spike (Phase 0)'),
         actions: [
+          IconButton(
+            tooltip: 'People',
+            icon: const Icon(Icons.people),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const PeopleScreen()),
+            ),
+          ),
           IconButton(
             tooltip: 'Profile',
             icon: const Icon(Icons.person),

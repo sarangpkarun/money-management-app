@@ -22,6 +22,7 @@ class MoneyTransaction {
     this.interestRate,
     required this.createdAt,
     this.settledAt,
+    this.lastActivityAt,
   });
 
   final String id;
@@ -37,6 +38,10 @@ class MoneyTransaction {
   final double? interestRate;
   final DateTime createdAt;
   final DateTime? settledAt;
+  final DateTime? lastActivityAt;
+
+  /// When something last happened on this entry (created or a payment written).
+  DateTime get lastActivity => lastActivityAt ?? createdAt;
 
   Money get balance => totalAmount - paidTotal;
 
@@ -57,6 +62,7 @@ class MoneyTransaction {
     'interestRate': interestRate,
     'createdAt': Timestamp.fromDate(createdAt),
     'settledAt': settledAt == null ? null : Timestamp.fromDate(settledAt!),
+    'lastActivityAt': Timestamp.fromDate(lastActivity),
   };
 
   factory MoneyTransaction.fromMap(String id, Map<String, dynamic> m) {
@@ -75,6 +81,7 @@ class MoneyTransaction {
       interestRate: (m['interestRate'] as num?)?.toDouble(),
       createdAt: ts('createdAt')!,
       settledAt: ts('settledAt'),
+      lastActivityAt: ts('lastActivityAt'),
     );
   }
 }

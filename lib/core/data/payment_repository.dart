@@ -97,6 +97,7 @@ class PaymentRepository {
         'settledAt': status == TransactionStatus.paid
             ? Timestamp.fromDate(now)
             : null,
+        'lastActivityAt': Timestamp.fromDate(now),
       });
     });
   }

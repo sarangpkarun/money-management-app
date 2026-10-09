@@ -134,6 +134,41 @@ void main() {
     });
   });
 
+  group('last activity', () {
+    test('is set when a transaction is created', () async {
+      final id = await newTxn();
+      expect((await txns.get(id))!.lastActivityAt, now);
+    });
+
+    test('is updated by every payment write', () async {
+      final id = await newTxn();
+      final later = now.add(const Duration(days: 3));
+      final laterRepo = PaymentRepository(db, 'u1', now: () => later);
+      final pid = await laterRepo.add(id, pay(100));
+      expect((await txns.get(id))!.lastActivityAt, later);
+
+      final latest = later.add(const Duration(days: 1));
+      await PaymentRepository(
+        db,
+        'u1',
+        now: () => latest,
+      ).edit(id, pay(200, id: pid));
+      expect((await txns.get(id))!.lastActivityAt, latest);
+    });
+
+    test('falls back to createdAt for older documents', () {
+      final t = MoneyTransaction(
+        type: TransactionType.lent,
+        personId: 'p',
+        personName: 'A',
+        title: 't',
+        totalAmount: Money.fromRupees(1),
+        createdAt: now,
+      );
+      expect(t.lastActivity, now);
+    });
+  });
+
   group('people', () {
     test(
       'renaming a person updates personName on their transactions',
