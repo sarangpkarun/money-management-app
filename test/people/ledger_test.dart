@@ -176,6 +176,16 @@ void main() {
     expect(events[0].flow, LedgerFlow.moneyIn);
   });
 
+  test('an instalment plan reads as one and counts as owed', () {
+    final events = buildLedger([
+      TransactionWithPayments(txn('i', TransactionType.instalment, 12000), [
+        pay(3000, DateTime(2026, 9, 15)),
+      ]),
+    ], now: now);
+    expect(events[0].label, 'Instalment plan ₹12,000');
+    expect(balances(events), [-12000, -9000]);
+  });
+
   group('interest', () {
     test('an open loan with interest ends at principal plus interest', () {
       final loan = txn(

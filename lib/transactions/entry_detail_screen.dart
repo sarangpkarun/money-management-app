@@ -8,6 +8,7 @@ import '../core/models/payment.dart';
 import 'emi_payment_sheet.dart';
 import 'emi_schedule_view.dart';
 import 'entry_form_logic.dart';
+import 'instalment_actions.dart';
 import 'payment_sheet.dart';
 import 'status_badge.dart';
 import 'transaction_providers.dart';
@@ -136,9 +137,21 @@ class EntryDetailScreen extends ConsumerWidget {
         title: Text(t.personName),
         actions: [
           PopupMenuButton<String>(
-            onSelected: (_) => _delete(context, ref, t),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'delete', child: Text('Delete entry')),
+            onSelected: (v) => v == 'extra'
+                ? showExtraPaymentSheet(
+                    context,
+                    txn: t,
+                    owed: outstanding(t, DateTime.now()),
+                  )
+                : _delete(context, ref, t),
+            itemBuilder: (_) => [
+              if (t.type == TransactionType.instalment &&
+                  !outstanding(t, DateTime.now()).isZero)
+                const PopupMenuItem(
+                  value: 'extra',
+                  child: Text('Add extra payment'),
+                ),
+              const PopupMenuItem(value: 'delete', child: Text('Delete entry')),
             ],
           ),
         ],
@@ -152,9 +165,11 @@ class EntryDetailScreen extends ConsumerWidget {
                   onPressed: () => t.emiPlan != null
                       ? _payNextEmi(context, t)
                       : showPaymentSheet(context, txn: t),
-                  child: Text(
-                    t.emiPlan != null ? 'Pay next EMI' : payActionLabel(t),
-                  ),
+                  child: Text(switch (t.type) {
+                    TransactionType.emi => 'Pay next EMI',
+                    TransactionType.instalment => 'Pay next instalment',
+                    _ => payActionLabel(t),
+                  }),
                 ),
               ),
             ),
@@ -204,7 +219,10 @@ class EntryDetailScreen extends ConsumerWidget {
             EmiScheduleView(
               plan: t.emiPlan!,
               now: DateTime.now(),
-              onPayRow: (row) => showEmiPaymentSheet(context, txn: t, row: row),
+              instalment: t.type == TransactionType.instalment,
+              onPayRow: (row) => t.type == TransactionType.instalment
+                  ? showInstalmentRowSheet(context, txn: t, row: row)
+                  : showEmiPaymentSheet(context, txn: t, row: row),
             ),
           ],
           const SizedBox(height: 24),

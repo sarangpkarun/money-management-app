@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../emi/emi_schedule.dart';
+import '../instalments/instalment_plan.dart';
 import '../models/emi_plan.dart';
 import '../models/money_transaction.dart';
 import '../money/money.dart';
@@ -146,6 +147,49 @@ class TransactionRepository {
       totalAmount: plan.totalPayable,
       status: computeStatus(
         total: plan.totalPayable,
+        paid: Money.zero,
+        dueDate: firstDue,
+        now: now,
+      ),
+      dueDate: firstDue,
+      createdAt: now,
+      lastActivityAt: now,
+      date: now,
+      notes: notes,
+      emiPlan: plan,
+    );
+    return (await _paths.transactions.add(entry.toMap())).id;
+  }
+
+  /// Creates an instalment plan for money you owe a person: [total] paid in
+  /// equal monthly payments, given either [months] or [monthlyAmount]. Throws
+  /// [InstalmentError] for bad terms. The person you owe is the entry's person.
+  Future<String> addInstalmentPlan({
+    required String personId,
+    required String personName,
+    required String title,
+    required Money total,
+    int? months,
+    Money? monthlyAmount,
+    required DateTime startDate,
+    String? notes,
+  }) async {
+    final plan = generateInstalmentPlan(
+      total: total,
+      months: months,
+      monthlyAmount: monthlyAmount,
+      startDate: startDate,
+    );
+    final now = _now();
+    final firstDue = plan.rows.first.dueDate;
+    final entry = MoneyTransaction(
+      type: TransactionType.instalment,
+      personId: personId,
+      personName: personName,
+      title: title,
+      totalAmount: total,
+      status: computeStatus(
+        total: total,
         paid: Money.zero,
         dueDate: firstDue,
         now: now,

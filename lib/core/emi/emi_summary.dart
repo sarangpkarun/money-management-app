@@ -52,7 +52,7 @@ EmiSummary summarizePlan(EmiPlan plan, DateTime now) {
     next: plan.nextUnpaid,
     remainingCount: remainingCount,
     remainingTotal: remainingTotal,
-    lastDueDate: plan.rows.last.dueDate,
+    lastDueDate: plan.rows.isEmpty ? plan.startDate : plan.rows.last.dueDate,
     paidCount: paidCount,
     overdueCount: overdueCount,
     overdueAmount: overdueAmount,

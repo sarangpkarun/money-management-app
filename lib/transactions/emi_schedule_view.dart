@@ -29,6 +29,7 @@ class EmiScheduleView extends StatelessWidget {
     required this.plan,
     required this.now,
     required this.onPayRow,
+    this.instalment = false,
   });
 
   final EmiPlan plan;
@@ -36,6 +37,10 @@ class EmiScheduleView extends StatelessWidget {
 
   /// Called when an unpaid row is tapped.
   final void Function(EmiRow row) onPayRow;
+
+  /// An instalment plan to a person rather than an EMI purchase: no principal
+  /// and interest split, and "payment" wording.
+  final bool instalment;
 
   @override
   Widget build(BuildContext context) {
@@ -50,11 +55,14 @@ class EmiScheduleView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('EMI summary', style: theme.textTheme.titleMedium),
+                Text(
+                  instalment ? 'Instalment summary' : 'EMI summary',
+                  style: theme.textTheme.titleMedium,
+                ),
                 const SizedBox(height: 12),
                 _line(
                   context,
-                  'Next EMI',
+                  instalment ? 'Next payment' : 'Next EMI',
                   summary.next == null
                       ? 'All paid'
                       : '${summary.next!.remaining.format()} on '
@@ -62,7 +70,7 @@ class EmiScheduleView extends StatelessWidget {
                 ),
                 _line(
                   context,
-                  'Remaining EMIs',
+                  instalment ? 'Remaining payments' : 'Remaining EMIs',
                   '${summary.remainingCount} of ${plan.months}',
                 ),
                 _line(
@@ -72,7 +80,7 @@ class EmiScheduleView extends StatelessWidget {
                 ),
                 _line(
                   context,
-                  'Last EMI',
+                  instalment ? 'Last payment' : 'Last EMI',
                   formatShortDate(summary.lastDueDate),
                 ),
                 if (summary.overdueCount > 0) ...[
@@ -88,14 +96,16 @@ class EmiScheduleView extends StatelessWidget {
                 ],
                 const SizedBox(height: 8),
                 Text(
-                  [
-                    'Price ${plan.price.format()}',
-                    if (!plan.downPayment.isZero)
-                      'Down payment ${plan.downPayment.format()}',
-                    plan.annualRatePercent == 0
-                        ? 'No-cost EMI'
-                        : '${_rate(plan.annualRatePercent)}% a year',
-                  ].join(' · '),
+                  instalment
+                      ? 'Total ${plan.price.format()} · no interest'
+                      : [
+                          'Price ${plan.price.format()}',
+                          if (!plan.downPayment.isZero)
+                            'Down payment ${plan.downPayment.format()}',
+                          plan.annualRatePercent == 0
+                              ? 'No-cost EMI'
+                              : '${_rate(plan.annualRatePercent)}% a year',
+                        ].join(' · '),
                   style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
@@ -105,8 +115,13 @@ class EmiScheduleView extends StatelessWidget {
         const SizedBox(height: 16),
         Text('Schedule', style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
+        if (plan.rows.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('Nothing left to pay'),
+          ),
         for (final row in plan.rows)
-          _RowTile(row: row, now: now, onTap: onPayRow),
+          _RowTile(row: row, now: now, onTap: onPayRow, showSplit: !instalment),
       ],
     );
   }
@@ -133,11 +148,17 @@ class EmiScheduleView extends StatelessWidget {
 }
 
 class _RowTile extends StatelessWidget {
-  const _RowTile({required this.row, required this.now, required this.onTap});
+  const _RowTile({
+    required this.row,
+    required this.now,
+    required this.onTap,
+    required this.showSplit,
+  });
 
   final EmiRow row;
   final DateTime now;
   final void Function(EmiRow) onTap;
+  final bool showSplit;
 
   @override
   Widget build(BuildContext context) {
@@ -155,8 +176,8 @@ class _RowTile extends StatelessWidget {
       subtitle: Text(
         [
           'Due ${formatShortDate(row.dueDate)}',
-          'Principal ${row.principal.format()}',
-          'Interest ${row.interest.format()}',
+          if (showSplit) 'Principal ${row.principal.format()}',
+          if (showSplit) 'Interest ${row.interest.format()}',
           if (status == EmiRowStatus.partial)
             'Paid ${row.paidAmount.format()} of ${row.amount.format()}',
           if (row.paidOn != null && status == EmiRowStatus.paid)

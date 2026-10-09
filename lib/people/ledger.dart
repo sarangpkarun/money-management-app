@@ -80,9 +80,13 @@ List<LedgerEvent> buildLedger(
       event: LedgerEvent(
         kind: LedgerKind.entry,
         date: t.entryDate,
-        label: t.type == TransactionType.emi
-            ? 'EMI purchase ${t.totalAmount.format()}'
-            : '${t.isReceivable ? 'Gave' : 'Borrowed'} ${t.totalAmount.format()}',
+        label: switch (t.type) {
+          TransactionType.emi => 'EMI purchase ${t.totalAmount.format()}',
+          TransactionType.instalment =>
+            'Instalment plan ${t.totalAmount.format()}',
+          _ =>
+            '${t.isReceivable ? 'Gave' : 'Borrowed'} ${t.totalAmount.format()}',
+        },
         detail: t.title,
         delta: Money(sign * t.totalAmount.paise),
         transactionId: t.id,

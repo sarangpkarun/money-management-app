@@ -14,6 +14,7 @@ class Payment {
     this.screenshotUrl,
     this.createdAt,
     this.installment,
+    this.extra = false,
   });
 
   final String id;
@@ -29,6 +30,10 @@ class Payment {
   /// For an EMI purchase: which instalment this payment is towards.
   final int? installment;
 
+  /// For an instalment plan: a payment towards the whole plan rather than one
+  /// payment, which shortens the schedule from the end.
+  final bool extra;
+
   Map<String, dynamic> toMap() => {
     'amount': amount.paise,
     'date': Timestamp.fromDate(date),
@@ -37,6 +42,7 @@ class Payment {
     'screenshotUrl': screenshotUrl,
     if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
     if (installment != null) 'installment': installment,
+    if (extra) 'extra': true,
   };
 
   factory Payment.fromMap(String id, Map<String, dynamic> m) => Payment(
@@ -48,6 +54,7 @@ class Payment {
     screenshotUrl: m['screenshotUrl'] as String?,
     createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
     installment: m['installment'] as int?,
+    extra: m['extra'] == true,
   );
 }
 

@@ -158,6 +158,17 @@ class EmiPlan {
     return null;
   }
 
+  /// A copy with a different set of rows (the tenure follows the row count).
+  EmiPlan copyWithRows(List<EmiRow> newRows) => EmiPlan(
+    price: price,
+    downPayment: downPayment,
+    annualRatePercent: annualRatePercent,
+    months: newRows.length,
+    emi: emi,
+    startDate: startDate,
+    rows: newRows,
+  );
+
   /// A copy with [row] replacing the row that has the same number.
   EmiPlan copyWithRow(EmiRow row) => EmiPlan(
     price: price,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../instalments/instalment_plan.dart' as plans;
 import '../interest/interest.dart';
 import '../models/emi_plan.dart';
 import '../models/money_transaction.dart';
@@ -51,8 +52,8 @@ class PaymentRepository {
   Future<String> add(String txnId, Payment payment) {
     final ref = _paths.payments(txnId).doc();
     return _apply(txnId, (txn, t) {
-      if (t.type == TransactionType.emi) {
-        throw StateError('An EMI purchase is paid instalment by instalment');
+      if (t.emiPlan != null) {
+        throw StateError('This entry is paid through its schedule');
       }
       _check(outstanding(t, _now()), payment.amount);
       txn.set(ref, {
@@ -67,6 +68,21 @@ class PaymentRepository {
     final ref = _paths.payments(txnId).doc(payment.id);
     return _apply(txnId, (txn, t) async {
       final old = Payment.fromMap(payment.id, (await txn.get(ref)).data()!);
+      if (old.extra && t.emiPlan != null) {
+        _check(outstanding(t, _now()) + old.amount, payment.amount);
+        txn.set(ref, {
+          ...payment.toMap(),
+          if (old.createdAt != null)
+            'createdAt': Timestamp.fromDate(old.createdAt!),
+          'extra': true,
+        });
+        // Undo the old extra payment, then apply the edited amount.
+        final restored = plans.restoreExtraPayment(t.emiPlan!, old.amount);
+        return _Change(
+          payment.amount - old.amount,
+          plans.applyExtraPayment(restored, payment.amount),
+        );
+      }
       final row = _rowOf(t, old);
       // The edited amount may use what is still open (on the instalment, or on
       // the entry) plus what this payment already covered.
@@ -102,6 +118,12 @@ class PaymentRepository {
     return _apply(txnId, (txn, t) async {
       final old = Payment.fromMap(paymentId, (await txn.get(ref)).data()!);
       txn.delete(ref);
+      if (old.extra && t.emiPlan != null) {
+        return _Change(
+          Money.zero - old.amount,
+          plans.restoreExtraPayment(t.emiPlan!, old.amount),
+        );
+      }
       final row = _rowOf(t, old);
       if (row != null) {
         final left = row.paidAmount - old.amount;
@@ -154,6 +176,64 @@ class PaymentRepository {
         ),
       );
     }).then((_) => ref.id);
+  }
+
+  /// Skips a month on an instalment plan (see `skipMonth` in the plan logic):
+  /// the payment and all later unpaid ones move a month later.
+  Future<void> skipMonth(String txnId, int number) => _apply(
+    txnId,
+    (txn, t) =>
+        _Change(Money.zero, plans.skipMonth(_instalmentPlan(t), number)),
+  );
+
+  /// Changes one payment of an instalment plan; the rest is re-spread so the
+  /// total still adds up.
+  Future<void> changeInstalmentAmount(
+    String txnId,
+    int number,
+    Money newAmount,
+  ) => _apply(
+    txnId,
+    (txn, t) => _Change(
+      Money.zero,
+      plans.changeAmount(_instalmentPlan(t), number, newAmount),
+    ),
+  );
+
+  /// An extra payment towards a whole instalment plan: it is recorded as a
+  /// payment and shortens the schedule from the last payment backwards. At most
+  /// what is still owed.
+  Future<String> payExtra(
+    String txnId, {
+    required Money amount,
+    required DateTime date,
+    required PaymentMode mode,
+    String? note,
+  }) {
+    final ref = _paths.payments(txnId).doc();
+    return _apply(txnId, (txn, t) {
+      final plan = _instalmentPlan(t);
+      _check(outstanding(t, _now()), amount);
+      txn.set(
+        ref,
+        Payment(
+          amount: amount,
+          date: date,
+          mode: mode,
+          note: note,
+          extra: true,
+        ).toMap()..['createdAt'] = Timestamp.fromDate(_now()),
+      );
+      return _Change(amount, plans.applyExtraPayment(plan, amount));
+    }).then((_) => ref.id);
+  }
+
+  EmiPlan _instalmentPlan(MoneyTransaction t) {
+    final plan = t.emiPlan;
+    if (t.type != TransactionType.instalment || plan == null) {
+      throw StateError('This is not an instalment plan');
+    }
+    return plan;
   }
 
   /// The instalment a payment was made towards, if it has one on this entry.

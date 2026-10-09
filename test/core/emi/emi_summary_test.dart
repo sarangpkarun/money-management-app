@@ -89,4 +89,14 @@ void main() {
   test('isComplete is false while anything remains', () {
     expect(summarizePlan(paid(plan(), 3), early).isComplete, isFalse);
   });
+
+  test('a plan with no rows left is complete and does not crash', () {
+    final empty = plan().copyWithRows(const []);
+    final s = summarizePlan(empty, DateTime(2026, 1, 1));
+    expect(s.next, isNull);
+    expect(s.remainingCount, 0);
+    expect(s.remainingTotal, Money.zero);
+    expect(s.isComplete, isTrue);
+    expect(s.lastDueDate, empty.startDate);
+  });
 }

@@ -174,6 +174,17 @@ void main() {
       expect(find.text('Store or bank'), findsOneWidget);
     });
 
+    testWidgets('"Pay in instalments" opens the instalment form', (
+      tester,
+    ) async {
+      await pumpShell(tester);
+      await tester.tap(tab('Add'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pay in instalments'));
+      await tester.pumpAndSettle();
+      expect(find.text('Person you owe'), findsOneWidget);
+    });
+
     testWidgets('"Money I gave" opens Add entry on Lent', (tester) async {
       await pumpShell(tester);
       await tester.tap(tab('Add'));

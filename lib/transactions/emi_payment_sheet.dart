@@ -53,6 +53,8 @@ class _EmiPaymentSheetState extends ConsumerState<_EmiPaymentSheet> {
     super.dispose();
   }
 
+  bool get _isEmi => widget.txn.type == TransactionType.emi;
+
   String? _validate(Money? amount) {
     if (amount == null) return 'Enter a valid amount';
     return switch (validatePayment(
@@ -62,7 +64,8 @@ class _EmiPaymentSheetState extends ConsumerState<_EmiPaymentSheet> {
       PaymentValidation.ok => null,
       PaymentValidation.notPositive => 'Enter an amount above 0',
       PaymentValidation.exceedsBalance =>
-        'Cannot be more than what is left on this EMI '
+        'Cannot be more than what is left on this '
+            '${_isEmi ? 'EMI' : 'payment'} '
             '(${widget.row.remaining.format()})',
     };
   }
@@ -127,7 +130,9 @@ class _EmiPaymentSheetState extends ConsumerState<_EmiPaymentSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Pay EMI #${row.number}',
+              _isEmi
+                  ? 'Pay EMI #${row.number}'
+                  : 'Pay instalment #${row.number}',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             Text(
@@ -174,7 +179,9 @@ class _EmiPaymentSheetState extends ConsumerState<_EmiPaymentSheet> {
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _busy ? null : _save,
-              child: Text(_busy ? 'Saving...' : 'Mark EMI paid'),
+              child: Text(
+                _busy ? 'Saving...' : (_isEmi ? 'Mark EMI paid' : 'Mark paid'),
+              ),
             ),
           ],
         ),
