@@ -3,18 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/money/money.dart';
 import '../core/theme/app_colors.dart';
+import '../core/ui/format.dart';
 import '../core/ui/initials_avatar.dart';
 import 'people_providers.dart';
 import 'person_form_screen.dart';
 import 'person_summary.dart';
-
-const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', //
-];
-
-String formatShortDate(DateTime d) =>
-    '${d.day} ${_months[d.month - 1]} ${d.year}';
 
 const _filterLabels = {
   PeopleFilter.all: 'All',

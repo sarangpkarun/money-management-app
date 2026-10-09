@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/data/providers.dart';
 import '../core/interest/interest.dart';
 import '../core/models/money_transaction.dart';
+import '../core/models/payment.dart';
 import 'entry_form_logic.dart';
 import 'payment_sheet.dart';
 import 'status_badge.dart';
@@ -43,6 +44,68 @@ class EntryDetailScreen extends ConsumerWidget {
     if (context.mounted) Navigator.of(context).pop();
   }
 
+  /// Settled entries offer "Mark as unpaid" instead of a payment button.
+  Widget? _settledBar(
+    BuildContext context,
+    WidgetRef ref,
+    MoneyTransaction t,
+    List<Payment>? payments,
+  ) {
+    final last = latestPayment(payments ?? const []);
+    if (last == null) return null;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: OutlinedButton(
+          onPressed: () => _markUnpaid(context, ref, t, last),
+          child: const Text('Mark as unpaid'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _markUnpaid(
+    BuildContext context,
+    WidgetRef ref,
+    MoneyTransaction t,
+    Payment last,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Mark as unpaid?'),
+        content: Text(
+          'The last payment of ${last.amount.format()} '
+          '(${_fmtDate(last.date)}) will be removed and this entry '
+          'reopened. Your other payments stay.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Mark as unpaid'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final removed = await ref
+        .read(paymentRepositoryProvider)
+        .reopenLastPayment(t.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Reopened. Removed ${removed.amount.format()} payment.',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final txnAsync = ref.watch(transactionProvider(transactionId));
@@ -74,7 +137,7 @@ class EntryDetailScreen extends ConsumerWidget {
         ],
       ),
       bottomNavigationBar: outstanding(t, DateTime.now()).isZero
-          ? null
+          ? _settledBar(context, ref, t, payments.value)
           : SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(16),

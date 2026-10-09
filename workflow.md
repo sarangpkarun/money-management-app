@@ -67,8 +67,8 @@ Goal: a usable lent/borrowed tracker with sync and security.
    - [x] Edit/delete a payment; recompute balance from payments
    - [x] Optional interest on borrowed (simple, compound) and repayment type (repayment type is recorded only; schedules come with the Phase 2 instalment engine)
 6. History
-   - [ ] Settings → History: settled entries, filters, search
-   - [ ] "Mark as unpaid" with confirmation
+   - [x] Settings → History: settled entries, filters, search (opens from the temporary home until the Settings tab exists; PDF/CSV export is Phase 3)
+   - [x] "Mark as unpaid" with confirmation (removes the last payment)
 7. Shell
    - [ ] Bottom nav (Home, People, +, Reminders, Settings), theme tokens (light/dark palette), basic Home totals
 
@@ -135,3 +135,4 @@ Exit criteria: full testing checklist (section 9.2 of the product doc) green; no
 | 2026-10-09 | Flutter + Firebase, email/password only, no app lock | Product doc |
 | 2026-10-09 | iOS deployment target 15.0 | Required by firebase_* 4.x-16.x plugins |
 | 2026-10-09 | Interest is simple/compound on the original principal from the entry date, computed not stored, and frozen at `settledAt` once paid; payments are limited to principal + interest to date | Product doc 8.5; keeps a paid entry from reopening as interest accrues |
+| 2026-10-09 | "Mark as unpaid" removes the most recent payment (latest date, then the one recorded last) after a confirmation; History is just entries whose status is Paid | Balance is derived from payments, so reopening must remove one; no data is moved between collections |

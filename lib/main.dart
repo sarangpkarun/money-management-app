@@ -7,6 +7,7 @@ import 'core/alarm/alarm_screen.dart';
 import 'core/alarm/alarm_service.dart';
 import 'core/data/firestore_setup.dart';
 import 'firebase_options.dart';
+import 'history/history_screen.dart';
 import 'people/people_screen.dart';
 import 'settings/profile_screen.dart';
 import 'transactions/entries_screen.dart';
@@ -102,6 +103,13 @@ class _AlarmSpikeScreenState extends State<AlarmSpikeScreen> {
       appBar: AppBar(
         title: const Text('Alarm spike (Phase 0)'),
         actions: [
+          IconButton(
+            tooltip: 'History',
+            icon: const Icon(Icons.history),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
+            ),
+          ),
           IconButton(
             tooltip: 'Entries',
             icon: const Icon(Icons.receipt_long),

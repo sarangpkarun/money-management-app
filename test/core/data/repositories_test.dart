@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_manager/core/data/payment_repository.dart';
@@ -369,6 +370,108 @@ void main() {
       expect(t.status, TransactionStatus.partiallyPaid);
       expect(t.settledAt, isNull);
       expect(outstanding(t, now), Money.fromRupees(200));
+    });
+  });
+
+  group('reopenLastPayment (mark as unpaid)', () {
+    Payment on(int rupees, DateTime date) =>
+        Payment(amount: Money.fromRupees(rupees), date: date);
+
+    PaymentRepository clock(DateTime at) =>
+        PaymentRepository(db, 'u1', now: () => at);
+
+    test(
+      'removes only the most recent payment and reopens the entry',
+      () async {
+        final id = await newTxn(); // 1000
+        await payments.add(id, on(600, DateTime(2026, 9, 1)));
+        await payments.add(id, on(400, DateTime(2026, 10, 1)));
+        expect((await txns.get(id))!.status, TransactionStatus.paid);
+
+        final removed = await payments.reopenLastPayment(id);
+        expect(removed.amount, Money.fromRupees(400));
+        final t = (await txns.get(id))!;
+        expect(t.paidTotal, Money.fromRupees(600));
+        expect(t.status, TransactionStatus.partiallyPaid);
+        expect(t.settledAt, isNull);
+        expect((await payments.watch(id).first).length, 1);
+      },
+    );
+
+    test('with a single payment the entry goes back to pending', () async {
+      final id = await newTxn();
+      await payments.add(id, pay(1000));
+      await payments.reopenLastPayment(id);
+      final t = (await txns.get(id))!;
+      expect(t.status, TransactionStatus.pending);
+      expect(t.paidTotal, Money.zero);
+    });
+
+    test('payments on the same day: the one created last is removed', () async {
+      final id = await newTxn();
+      final day = DateTime(2026, 9, 1);
+      await clock(DateTime(2026, 9, 1, 9)).add(id, on(300, day));
+      await clock(DateTime(2026, 9, 1, 18)).add(id, on(700, day));
+      final removed = await payments.reopenLastPayment(id);
+      expect(removed.amount, Money.fromRupees(700));
+    });
+
+    test(
+      '"last" means the latest payment date, even if entered earlier',
+      () async {
+        final id = await newTxn();
+        await clock(
+          DateTime(2026, 9, 1),
+        ).add(id, on(500, DateTime(2026, 10, 1)));
+        await clock(
+          DateTime(2026, 9, 2),
+        ).add(id, on(500, DateTime(2026, 9, 1)));
+        final removed = await payments.reopenLastPayment(id);
+        expect(removed.date, DateTime(2026, 10, 1));
+      },
+    );
+
+    test('interest resumes after reopening an interest entry', () async {
+      final personId = await people.add(Person(name: 'Ravi', createdAt: now));
+      final id = await txns.add(
+        MoneyTransaction(
+          type: TransactionType.borrowed,
+          personId: personId,
+          personName: 'Ravi',
+          title: 'Loan',
+          totalAmount: Money.fromRupees(10000),
+          interestType: InterestType.simple,
+          interestRate: 12,
+          createdAt: DateTime(2025, 10, 9),
+          date: DateTime(2025, 10, 9),
+        ),
+      );
+      await payments.add(id, pay(11200));
+      await payments.reopenLastPayment(id);
+      final t = (await txns.get(id))!;
+      expect(t.status, TransactionStatus.pending);
+      expect(
+        outstanding(t, now.add(const Duration(days: 365))),
+        Money.fromRupees(12400),
+      );
+    });
+
+    test('throws when there is no payment to remove', () async {
+      final id = await newTxn();
+      expect(() => payments.reopenLastPayment(id), throwsStateError);
+    });
+
+    test('payment creation time is stored and survives an edit', () async {
+      final id = await newTxn();
+      final created = DateTime(2026, 9, 1, 9);
+      final pid = await clock(created).add(id, pay(500));
+      final later = clock(DateTime(2026, 9, 5));
+      await later.edit(
+        id,
+        Payment(id: pid, amount: Money.fromRupees(600), date: now),
+      );
+      final doc = await db.doc('users/u1/transactions/$id/payments/$pid').get();
+      expect((doc.data()!['createdAt'] as Timestamp).toDate(), created);
     });
   });
 

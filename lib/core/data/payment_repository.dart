@@ -42,7 +42,10 @@ class PaymentRepository {
     final ref = _paths.payments(txnId).doc();
     return _apply(txnId, (txn, t) {
       _check(outstanding(t, _now()), payment.amount);
-      txn.set(ref, payment.toMap());
+      txn.set(ref, {
+        ...payment.toMap(),
+        'createdAt': Timestamp.fromDate(_now()),
+      });
       return payment.amount;
     }).then((_) => ref.id);
   }
@@ -54,7 +57,12 @@ class PaymentRepository {
       // The edited amount may use what is outstanding plus what this payment
       // already covered.
       _check(outstanding(t, _now()) + old.amount, payment.amount);
-      txn.set(ref, payment.toMap());
+      txn.set(ref, {
+        ...payment.toMap(),
+        // Keep when it was first recorded; only the details change.
+        if (old.createdAt != null)
+          'createdAt': Timestamp.fromDate(old.createdAt!),
+      });
       return payment.amount - old.amount;
     });
   }
@@ -66,6 +74,22 @@ class PaymentRepository {
       txn.delete(ref);
       return Money.zero - old.amount;
     });
+  }
+
+  /// "Mark as unpaid": removes the most recent payment (latest payment date,
+  /// then the one recorded last) through [delete], so the totals, status,
+  /// `settledAt` and interest are recomputed atomically. Returns what was
+  /// removed.
+  Future<Payment> reopenLastPayment(String txnId) async {
+    final snap = await _paths.payments(txnId).get();
+    if (snap.docs.isEmpty) {
+      throw StateError('This entry has no payments to remove');
+    }
+    final last = latestPayment([
+      for (final d in snap.docs) Payment.fromMap(d.id, d.data()),
+    ])!;
+    await delete(txnId, last.id);
+    return last;
   }
 
   void _check(Money available, Money amount) {
