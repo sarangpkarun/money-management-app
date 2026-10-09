@@ -49,8 +49,8 @@ Goal: a usable lent/borrowed tracker with sync and security.
    - [x] Status engine (Pending / Partially Paid / Overdue / Paid, overdue priority) with unit tests
    - [x] Block overpayment
 2. Auth
-   - [ ] Sign up (name, email, password) + verification email
-   - [ ] Login, logout, forgot password
+   - [x] Sign up (name, email, password) + verification email
+   - [x] Login, logout, forgot password
    - [ ] Profile: name, currency, timezone
    - [ ] Delete account (client flow; function cleanup comes in Phase 2)
 3. Security

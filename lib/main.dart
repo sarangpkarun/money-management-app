@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'auth/auth_gate.dart';
 import 'core/alarm/alarm_screen.dart';
 import 'core/alarm/alarm_service.dart';
 import 'core/data/firestore_setup.dart';
@@ -52,7 +53,7 @@ class _MoneyManagerAppState extends State<MoneyManagerApp> {
       navigatorKey: navigatorKey,
       title: 'Money Manager',
       theme: ThemeData(colorSchemeSeed: const Color(0xFF3F51B5)),
-      home: const AlarmSpikeScreen(),
+      home: const AuthGate(home: AlarmSpikeScreen()),
     );
   }
 }
