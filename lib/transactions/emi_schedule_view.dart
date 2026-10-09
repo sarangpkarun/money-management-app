@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/emi/emi_estimates.dart';
 import '../core/emi/emi_summary.dart';
 import '../core/models/emi_plan.dart';
 import '../core/theme/app_colors.dart';
@@ -45,6 +46,7 @@ class EmiScheduleView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = summarizePlan(plan, now);
+    final lateFee = lateFeeToDate(plan, now);
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,6 +85,18 @@ class EmiScheduleView extends StatelessWidget {
                   instalment ? 'Last payment' : 'Last EMI',
                   formatShortDate(summary.lastDueDate),
                 ),
+                if (!instalment && lateFee.count > 0)
+                  _line(
+                    context,
+                    'Late fee to date (estimate)',
+                    lateFee.total.format(),
+                  ),
+                if (!instalment && plan.noCostRate != null)
+                  _line(
+                    context,
+                    'Seller absorbs (estimate)',
+                    noCostSellerInterest(plan).format(),
+                  ),
                 if (summary.overdueCount > 0) ...[
                   const SizedBox(height: 8),
                   Text(

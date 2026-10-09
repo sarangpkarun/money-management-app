@@ -90,6 +90,38 @@ class EmiRow {
   );
 }
 
+/// A late fee estimate: a flat amount or a percentage of what is still owed on
+/// an overdue instalment, charged once per instalment once it is more than
+/// [graceDays] late.
+class LateFeeRule {
+  const LateFeeRule.flat(Money amount, {this.graceDays = 0})
+    : flat = amount,
+      percent = null;
+
+  const LateFeeRule.percent(double this.percent, {this.graceDays = 0})
+    : flat = null;
+
+  final Money? flat;
+  final double? percent;
+  final int graceDays;
+
+  Map<String, dynamic> toMap() => {
+    if (flat != null) 'flat': flat!.paise,
+    if (percent != null) 'percent': percent,
+    'graceDays': graceDays,
+  };
+
+  factory LateFeeRule.fromMap(Map<String, dynamic> m) {
+    final grace = (m['graceDays'] as int?) ?? 0;
+    return m['flat'] != null
+        ? LateFeeRule.flat(Money(m['flat'] as int), graceDays: grace)
+        : LateFeeRule.percent(
+            (m['percent'] as num).toDouble(),
+            graceDays: grace,
+          );
+  }
+}
+
 /// The terms of an EMI purchase and its schedule with payment progress.
 class EmiPlan {
   const EmiPlan({
@@ -100,6 +132,8 @@ class EmiPlan {
     required this.emi,
     required this.startDate,
     required this.rows,
+    this.lateFee,
+    this.noCostRate,
   });
 
   /// Builds a plan with nothing paid from a generated [schedule].
@@ -109,7 +143,11 @@ class EmiPlan {
     required Money downPayment,
     required double annualRatePercent,
     required DateTime startDate,
+    LateFeeRule? lateFee,
+    double? noCostRate,
   }) => EmiPlan(
+    lateFee: lateFee,
+    noCostRate: noCostRate,
     price: price,
     downPayment: downPayment,
     annualRatePercent: annualRatePercent,
@@ -139,6 +177,13 @@ class EmiPlan {
   final DateTime startDate;
   final List<EmiRow> rows;
 
+  /// Optional late fee estimate (never added to what is owed).
+  final LateFeeRule? lateFee;
+
+  /// For a no-cost EMI: the lender's yearly rate, which the seller absorbs.
+  /// The customer's own rate ([annualRatePercent]) is 0.
+  final double? noCostRate;
+
   /// Everything due in instalments (excludes the down payment).
   Money get totalPayable =>
       rows.fold(Money.zero, (total, r) => total + r.amount);
@@ -167,6 +212,8 @@ class EmiPlan {
     emi: emi,
     startDate: startDate,
     rows: newRows,
+    lateFee: lateFee,
+    noCostRate: noCostRate,
   );
 
   /// A copy with [row] replacing the row that has the same number.
@@ -178,6 +225,8 @@ class EmiPlan {
     emi: emi,
     startDate: startDate,
     rows: [for (final r in rows) r.number == row.number ? row : r],
+    lateFee: lateFee,
+    noCostRate: noCostRate,
   );
 
   /// The terms, without the rows (those go in a separate `schedule` list so a
@@ -189,6 +238,8 @@ class EmiPlan {
     'months': months,
     'emi': emi.paise,
     'startDate': Timestamp.fromDate(startDate),
+    if (lateFee != null) 'lateFee': lateFee!.toMap(),
+    if (noCostRate != null) 'noCostRate': noCostRate,
   };
 
   List<Map<String, dynamic>> scheduleToMaps() => [
@@ -205,6 +256,12 @@ class EmiPlan {
     months: terms['months'] as int,
     emi: Money(terms['emi'] as int),
     startDate: _date(terms['startDate']),
+    lateFee: terms['lateFee'] == null
+        ? null
+        : LateFeeRule.fromMap(
+            Map<String, dynamic>.from(terms['lateFee'] as Map),
+          ),
+    noCostRate: (terms['noCostRate'] as num?)?.toDouble(),
     rows: [
       for (final r in schedule)
         EmiRow.fromMap(Map<String, dynamic>.from(r as Map)),

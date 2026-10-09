@@ -121,6 +121,8 @@ class TransactionRepository {
     required double annualRatePercent,
     required int months,
     required DateTime startDate,
+    LateFeeRule? lateFee,
+    double? noCostRate,
     String? notes,
   }) async {
     final schedule = generateEmiSchedule(
@@ -136,6 +138,8 @@ class TransactionRepository {
       downPayment: downPayment,
       annualRatePercent: annualRatePercent,
       startDate: startDate,
+      lateFee: lateFee,
+      noCostRate: noCostRate,
     );
     final now = _now();
     final firstDue = plan.rows.first.dueDate;

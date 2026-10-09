@@ -9,6 +9,7 @@ import 'emi_payment_sheet.dart';
 import 'emi_schedule_view.dart';
 import 'entry_form_logic.dart';
 import 'instalment_actions.dart';
+import 'prepayment_screen.dart';
 import 'payment_sheet.dart';
 import 'status_badge.dart';
 import 'transaction_providers.dart';
@@ -137,19 +138,36 @@ class EntryDetailScreen extends ConsumerWidget {
         title: Text(t.personName),
         actions: [
           PopupMenuButton<String>(
-            onSelected: (v) => v == 'extra'
-                ? showExtraPaymentSheet(
+            onSelected: (v) {
+              switch (v) {
+                case 'extra':
+                  showExtraPaymentSheet(
                     context,
                     txn: t,
                     owed: outstanding(t, DateTime.now()),
-                  )
-                : _delete(context, ref, t),
+                  );
+                case 'prepay':
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PrepaymentScreen(plan: t.emiPlan!),
+                    ),
+                  );
+                default:
+                  _delete(context, ref, t);
+              }
+            },
             itemBuilder: (_) => [
               if (t.type == TransactionType.instalment &&
                   !outstanding(t, DateTime.now()).isZero)
                 const PopupMenuItem(
                   value: 'extra',
                   child: Text('Add extra payment'),
+                ),
+              if (t.type == TransactionType.emi &&
+                  !outstanding(t, DateTime.now()).isZero)
+                const PopupMenuItem(
+                  value: 'prepay',
+                  child: Text('Prepay / foreclose'),
                 ),
               const PopupMenuItem(value: 'delete', child: Text('Delete entry')),
             ],
