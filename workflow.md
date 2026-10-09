@@ -16,10 +16,15 @@ Goal: prove the riskiest part (alarms) and set up the project skeleton.
 - [x] Choose state management (Riverpod recommended) and folder layout (feature-first: `auth/ people/ transactions/ reminders/ reports/ settings/ core/`)
 - [x] Confirm current package versions and iOS support (firebase_*, flutter_local_notifications, fl_chart, pdf, csv, flutter_contacts, share_plus)
 - [x] CI: `flutter analyze` + `flutter test` on every push
-- [ ] **Alarm spike (Android):** exact alarm + full-screen intent + boot re-schedule; test app closed, screen locked, after restart, battery saver on
+- [x] **Alarm spike (Android):** exact alarm + full-screen intent + boot re-schedule; test app closed, screen locked, after restart, battery saver on
 - [ ] (deferred: needs a Mac + iPhone) **Alarm spike (iPhone):** AlarmKit bridge on a real device; confirm minimum iOS version; local-notification fallback (about 30 s sound)
 - [ ] (deferred: needs the phones; Xiaomi 23127PN0CG / Android 16 in progress) Test on Xiaomi, Oppo, Vivo, Samsung; record per-brand permission steps
 - [ ] Write the decision: iPhone approach, minimum iOS version
+
+### Android alarm spike results
+| Device | Android | Result |
+| --- | --- | --- |
+| Xiaomi 23127PN0CG | 16 (SDK 36) | Passed (manual test by user): full-screen alarm screen with sound, Snooze and Dismiss; app closed, locked, reboot, battery saver. Needed Xiaomi autostart + lock-screen permissions. |
 
 ### Package versions (confirmed 2026-10-09, Flutter 3.44.1)
 | Package | Version | iOS min | Notes |
