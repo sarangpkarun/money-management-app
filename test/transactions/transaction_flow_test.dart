@@ -119,6 +119,40 @@ void main() {
       expect((await db.collection('users/u1/people').get()).docs.length, 1);
     });
 
+    testWidgets('a pre-filled person needs no typing and keeps the person id', (
+      tester,
+    ) async {
+      final personId = await people.add(
+        Person(name: 'Asha', createdAt: DateTime(2026, 1, 1)),
+      );
+      final asha = (await people.watch().first).single;
+      expect(asha.id, personId);
+      await pumpApp(tester, AddEntryScreen(initialPerson: asha));
+      expect(
+        tester.widget<TextField>(field('Person')).controller!.text,
+        'Asha',
+      );
+      await tester.enterText(field('Amount'), '250');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      final doc = (await db.collection('users/u1/transactions').get())
+          .docs
+          .single
+          .data();
+      expect(doc['personId'], personId);
+      expect(doc['personName'], 'Asha');
+      expect(doc['type'], 'lent');
+      expect((await db.collection('users/u1/people').get()).docs.length, 1);
+    });
+
+    testWidgets('initialType starts on Borrowed', (tester) async {
+      await pumpApp(
+        tester,
+        const AddEntryScreen(initialType: TransactionType.borrowed),
+      );
+      expect(find.text('Interest'), findsOneWidget); // only shown for Borrowed
+    });
+
     testWidgets('a borrowed entry shows Pay Now', (tester) async {
       await pumpApp(tester, const AddEntryScreen());
       await tester.tap(find.text('Borrowed'));

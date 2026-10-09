@@ -162,13 +162,21 @@ void main() {
     await pumpPeople(tester);
     await tester.tap(find.text('Meera'));
     await tester.pumpAndSettle();
+    // A row opens the person's ledger; editing is behind the Edit icon.
+    await tester.tap(find.byTooltip('Edit person'));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Name'),
       'Meera K',
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
-    expect(find.text('Meera K'), findsOneWidget);
+    // Back on the ledger, which shows the new name in its title and header.
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Meera K')),
+      findsOneWidget,
+    );
+    expect(find.text('Meera'), findsNothing);
   });
 
   testWidgets('a person with no entries can be deleted after confirming', (
@@ -177,6 +185,9 @@ void main() {
     await addPerson('Meera');
     await pumpPeople(tester);
     await tester.tap(find.text('Meera'));
+    await tester.pumpAndSettle();
+    // A row opens the person's ledger; editing is behind the Edit icon.
+    await tester.tap(find.byTooltip('Edit person'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Delete person'));
     await tester.tap(find.text('Delete person'));
@@ -192,6 +203,9 @@ void main() {
     await seed();
     await pumpPeople(tester);
     await tester.tap(find.text('Asha'));
+    await tester.pumpAndSettle();
+    // A row opens the person's ledger; editing is behind the Edit icon.
+    await tester.tap(find.byTooltip('Edit person'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Delete person'));
     await tester.tap(find.text('Delete person'));

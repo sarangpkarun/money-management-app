@@ -7,6 +7,7 @@ import '../core/ui/format.dart';
 import '../core/ui/initials_avatar.dart';
 import 'people_providers.dart';
 import 'person_form_screen.dart';
+import 'person_ledger_screen.dart';
 import 'person_summary.dart';
 
 const _filterLabels = {
@@ -35,10 +36,17 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   PeopleFilter _filter = PeopleFilter.all;
   PeopleSort _sort = PeopleSort.name;
 
-  void _openForm([PersonSummary? summary]) {
+  void _addPerson() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const PersonFormScreen()));
+  }
+
+  /// Tapping a person opens their ledger; editing is inside it.
+  void _openLedger(PersonSummary summary) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PersonFormScreen(person: summary?.person),
+        builder: (_) => PersonLedgerScreen(personId: summary.person.id),
       ),
     );
   }
@@ -64,7 +72,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add person',
-        onPressed: _openForm,
+        onPressed: _addPerson,
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -102,7 +110,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Could not load people: $e')),
               data: (all) {
-                if (all.isEmpty) return _EmptyState(onAdd: _openForm);
+                if (all.isEmpty) return _EmptyState(onAdd: _addPerson);
                 final shown = applyFilters(
                   all,
                   filter: _filter,
@@ -116,7 +124,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                   itemCount: shown.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) =>
-                      _PersonRow(summary: shown[i], onTap: _openForm),
+                      _PersonRow(summary: shown[i], onTap: _openLedger),
                 );
               },
             ),

@@ -26,6 +26,7 @@ class PersonAutocompleteField extends ConsumerWidget {
     super.key,
     required this.onSelected,
     this.onTextChanged,
+    this.initialPerson,
     this.errorText,
     this.label = 'Person',
   });
@@ -35,6 +36,9 @@ class PersonAutocompleteField extends ConsumerWidget {
 
   /// Fired as the user types, so a form can drop a stale selection.
   final ValueChanged<String>? onTextChanged;
+
+  /// Shown in the field from the start (already chosen).
+  final Person? initialPerson;
   final String? errorText;
   final String label;
 
@@ -63,6 +67,7 @@ class PersonAutocompleteField extends ConsumerWidget {
     // Keep the people data loaded and live so suggestions are ready on focus.
     ref.watch(personSummariesProvider);
     return Autocomplete<_Option>(
+      initialValue: TextEditingValue(text: initialPerson?.name ?? ''),
       displayStringForOption: (o) => o.summary?.person.name ?? o.newName!,
       optionsBuilder: (value) => _options(ref, value.text),
       onSelected: (o) => _select(ref, o),

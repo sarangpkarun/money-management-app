@@ -13,9 +13,16 @@ String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
 /// Record money lent (they owe you) or borrowed (you owe them).
 class AddEntryScreen extends ConsumerStatefulWidget {
-  const AddEntryScreen({super.key, this.initialType = TransactionType.lent});
+  const AddEntryScreen({
+    super.key,
+    this.initialType = TransactionType.lent,
+    this.initialPerson,
+  });
 
   final TransactionType initialType;
+
+  /// Pre-selects the person (used from their ledger).
+  final Person? initialPerson;
 
   @override
   ConsumerState<AddEntryScreen> createState() => _AddEntryScreenState();
@@ -23,7 +30,7 @@ class AddEntryScreen extends ConsumerStatefulWidget {
 
 class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
   late TransactionType _type = widget.initialType;
-  Person? _person;
+  late Person? _person = widget.initialPerson;
   final _amount = TextEditingController();
   final _title = TextEditingController();
   final _notes = TextEditingController();
@@ -137,6 +144,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
             ),
             const SizedBox(height: 16),
             PersonAutocompleteField(
+              initialPerson: widget.initialPerson,
               errorText: _errors.person,
               onSelected: (p) => setState(() => _person = p),
               onTextChanged: (text) {

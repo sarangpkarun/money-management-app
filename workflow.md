@@ -60,7 +60,7 @@ Goal: a usable lent/borrowed tracker with sync and security.
    - [x] People list: initials avatar, net amount colours, search, filters, sort
    - [x] Add/edit/delete person
    - [x] Name autocomplete with recent-first, balance, and "Add 'Name' as new person"
-   - [ ] Person ledger timeline with running balance
+   - [x] Person ledger timeline with running balance (statement sharing is Phase 3)
 5. Transactions
    - [x] Add entry screen (Lent / Borrowed segmented), amount, dates, notes
    - [x] Entry detail: progress bar, payment list, Receive Payment / Pay Now bottom sheet
@@ -136,3 +136,4 @@ Exit criteria: full testing checklist (section 9.2 of the product doc) green; no
 | 2026-10-09 | iOS deployment target 15.0 | Required by firebase_* 4.x-16.x plugins |
 | 2026-10-09 | Interest is simple/compound on the original principal from the entry date, computed not stored, and frozen at `settledAt` once paid; payments are limited to principal + interest to date | Product doc 8.5; keeps a paid entry from reopening as interest accrues |
 | 2026-10-09 | "Mark as unpaid" removes the most recent payment (latest date, then the one recorded last) after a confirmation; History is just entries whose status is Paid | Balance is derived from payments, so reopening must remove one; no data is moved between collections |
+| 2026-10-09 | Person ledger running balance uses the People-list convention (positive = they owe you). Interest is its own row (dated today while open, the settled day once paid; before payments on the same day) so the last balance equals the header net | Keeps the ledger, the People list and the entry totals consistent |
