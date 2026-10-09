@@ -121,4 +121,101 @@ void main() {
       },
     );
   });
+
+  group('with interest', () {
+    final now = DateTime(2026, 10, 9);
+    MoneyTransaction loan({
+      int paid = 0,
+      TransactionStatus status = TransactionStatus.pending,
+      DateTime? settledAt,
+    }) => MoneyTransaction(
+      type: TransactionType.borrowed,
+      personId: 'p',
+      personName: 'Ravi',
+      title: 't',
+      totalAmount: Money.fromRupees(10000),
+      paidTotal: Money.fromRupees(paid),
+      status: status,
+      interestType: InterestType.simple,
+      interestRate: 12,
+      createdAt: DateTime(2025, 10, 9),
+      date: DateTime(2025, 10, 9),
+      settledAt: settledAt,
+    );
+
+    test('summary shows the amount due and the interest included', () {
+      expect(
+        summaryLine(loan(paid: 5000), now: now),
+        'Paid ₹5,000 of ₹11,200 · Balance ₹6,200 · incl. ₹1,200 interest',
+      );
+    });
+
+    test('progress is measured against principal plus interest', () {
+      expect(paidFraction(loan(paid: 5600), now: now), 0.5);
+    });
+
+    test('paying only the principal is not Paid while interest is owed', () {
+      expect(
+        effectiveStatus(loan(paid: 10000), now: now),
+        TransactionStatus.partiallyPaid,
+      );
+      expect(
+        effectiveStatus(loan(paid: 11200), now: now),
+        TransactionStatus.paid,
+      );
+    });
+
+    test('a stored Paid stays Paid as time passes', () {
+      final settled = loan(
+        paid: 11200,
+        status: TransactionStatus.paid,
+        settledAt: now,
+      );
+      expect(
+        effectiveStatus(settled, now: DateTime(2028, 1, 1)),
+        TransactionStatus.paid,
+      );
+    });
+  });
+
+  group('validateEntry interest rate', () {
+    String? rateError(InterestType type, String rate) => validateEntry(
+      hasPerson: true,
+      amountText: '100',
+      date: DateTime(2026, 10, 9),
+      interestType: type,
+      rateText: rate,
+    ).rate;
+
+    test('not needed without interest', () {
+      expect(rateError(InterestType.none, ''), isNull);
+      expect(rateError(InterestType.none, 'junk'), isNull);
+    });
+
+    test('required and between 0 and 100 with interest', () {
+      expect(rateError(InterestType.simple, ''), isNotNull);
+      expect(rateError(InterestType.simple, 'abc'), isNotNull);
+      expect(rateError(InterestType.compound, '0'), isNotNull);
+      expect(rateError(InterestType.simple, '-5'), isNotNull);
+      expect(rateError(InterestType.simple, '101'), isNotNull);
+      expect(rateError(InterestType.simple, '12.5'), isNull);
+      expect(rateError(InterestType.compound, '100'), isNull);
+    });
+  });
+
+  test('formatRate drops a trailing .0', () {
+    expect(formatRate(12), '12');
+    expect(formatRate(12.5), '12.5');
+    expect(formatRate(7.25), '7.25');
+  });
+
+  test('labels', () {
+    expect(interestTypeLabel(InterestType.none), 'No interest');
+    expect(interestTypeLabel(InterestType.simple), 'Simple');
+    expect(interestTypeLabel(InterestType.compound), 'Compound');
+    expect(repaymentLabel(RepaymentType.oneTime), 'One-time');
+    expect(repaymentLabel(RepaymentType.weekly), 'Weekly instalments');
+    expect(repaymentLabel(RepaymentType.monthly), 'Monthly instalments');
+    expect(repaymentLabel(RepaymentType.flexible), 'Flexible');
+  });
 }

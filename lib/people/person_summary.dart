@@ -1,3 +1,4 @@
+import '../core/interest/interest.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/person.dart';
 import '../core/money/money.dart';
@@ -47,7 +48,8 @@ PersonSummary _summarizeOne(
   var overdue = false;
   var last = person.createdAt;
   for (final t in txns) {
-    net = t.isReceivable ? net + t.balance : net - t.balance;
+    final owed = outstanding(t, now); // principal plus interest, less payments
+    net = t.isReceivable ? net + owed : net - owed;
     // Recomputed from the due date: the stored status can be stale until a
     // scheduled job refreshes it.
     final status = computeStatus(

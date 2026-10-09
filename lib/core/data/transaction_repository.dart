@@ -96,6 +96,7 @@ class TransactionRepository {
       dueDate: t.dueDate,
       interestType: t.interestType,
       interestRate: t.interestRate,
+      repaymentType: t.repaymentType,
       createdAt: t.createdAt,
       lastActivityAt: _now(),
       date: t.date,

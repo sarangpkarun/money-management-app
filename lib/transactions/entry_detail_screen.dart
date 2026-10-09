@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/data/providers.dart';
+import '../core/interest/interest.dart';
 import '../core/models/money_transaction.dart';
 import 'entry_form_logic.dart';
 import 'payment_sheet.dart';
@@ -72,7 +73,7 @@ class EntryDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: t.balance.isZero
+      bottomNavigationBar: outstanding(t, DateTime.now()).isZero
           ? null
           : SafeArea(
               child: Padding(
@@ -113,6 +114,16 @@ class EntryDetailScreen extends ConsumerWidget {
               if (t.dueDate != null) 'Due ${_fmtDate(t.dueDate!)}',
             ].join(' · '),
           ),
+          if (t.interestType != InterestType.none) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${interestTypeLabel(t.interestType)} interest at '
+              '${formatRate(t.interestRate ?? 0)}% a year',
+            ),
+            Text('Interest to date ${interestFor(t, DateTime.now()).format()}'),
+          ],
+          if (t.type == TransactionType.borrowed)
+            Text('Repayment: ${repaymentLabel(t.repaymentType)}'),
           if (t.notes != null) ...[const SizedBox(height: 8), Text(t.notes!)],
           const SizedBox(height: 24),
           Text('Payments', style: Theme.of(context).textTheme.titleMedium),

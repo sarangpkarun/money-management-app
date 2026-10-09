@@ -65,7 +65,7 @@ Goal: a usable lent/borrowed tracker with sync and security.
    - [x] Add entry screen (Lent / Borrowed segmented), amount, dates, notes
    - [x] Entry detail: progress bar, payment list, Receive Payment / Pay Now bottom sheet
    - [x] Edit/delete a payment; recompute balance from payments
-   - [ ] Optional interest on borrowed (simple, compound) and repayment type
+   - [x] Optional interest on borrowed (simple, compound) and repayment type (repayment type is recorded only; schedules come with the Phase 2 instalment engine)
 6. History
    - [ ] Settings → History: settled entries, filters, search
    - [ ] "Mark as unpaid" with confirmation
@@ -134,3 +134,4 @@ Exit criteria: full testing checklist (section 9.2 of the product doc) green; no
 | --- | --- | --- |
 | 2026-10-09 | Flutter + Firebase, email/password only, no app lock | Product doc |
 | 2026-10-09 | iOS deployment target 15.0 | Required by firebase_* 4.x-16.x plugins |
+| 2026-10-09 | Interest is simple/compound on the original principal from the entry date, computed not stored, and frozen at `settledAt` once paid; payments are limited to principal + interest to date | Product doc 8.5; keeps a paid entry from reopening as interest accrues |

@@ -1,6 +1,7 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_manager/core/data/payment_repository.dart';
+import 'package:money_manager/core/interest/interest.dart';
 import 'package:money_manager/core/data/people_repository.dart';
 import 'package:money_manager/core/data/transaction_repository.dart';
 import 'package:money_manager/core/models/money_transaction.dart';
@@ -235,6 +236,139 @@ void main() {
       final u = (await txns.get(id))!;
       expect(u.dueDate, isNull);
       expect(u.status, TransactionStatus.pending);
+    });
+  });
+
+  group('interest fields', () {
+    test('interest and repayment type round-trip', () async {
+      final personId = await people.add(Person(name: 'Ravi', createdAt: now));
+      final id = await txns.add(
+        MoneyTransaction(
+          type: TransactionType.borrowed,
+          personId: personId,
+          personName: 'Ravi',
+          title: 'Loan',
+          totalAmount: Money.fromRupees(20000),
+          interestType: InterestType.compound,
+          interestRate: 12.5,
+          repaymentType: RepaymentType.monthly,
+          createdAt: now,
+        ),
+      );
+      final t = (await txns.get(id))!;
+      expect(t.interestType, InterestType.compound);
+      expect(t.interestRate, 12.5);
+      expect(t.repaymentType, RepaymentType.monthly);
+    });
+
+    test('older documents without a repayment type default to flexible', () {
+      final t = MoneyTransaction(
+        type: TransactionType.borrowed,
+        personId: 'p',
+        personName: 'A',
+        title: 't',
+        totalAmount: Money.fromRupees(1),
+        createdAt: now,
+      );
+      final map = t.toMap()..remove('repaymentType');
+      expect(
+        MoneyTransaction.fromMap('x', map).repaymentType,
+        RepaymentType.flexible,
+      );
+    });
+  });
+
+  group('payments on an entry with interest', () {
+    // 10,000 borrowed a year before `now` at 12% simple: 11,200 due today.
+    Future<String> interestEntry() async {
+      final personId = await people.add(Person(name: 'Ravi', createdAt: now));
+      return txns.add(
+        MoneyTransaction(
+          type: TransactionType.borrowed,
+          personId: personId,
+          personName: 'Ravi',
+          title: 'Loan',
+          totalAmount: Money.fromRupees(10000),
+          interestType: InterestType.simple,
+          interestRate: 12,
+          createdAt: DateTime(2025, 10, 9),
+          date: DateTime(2025, 10, 9),
+        ),
+      );
+    }
+
+    test('paying only the principal leaves the interest owing', () async {
+      final id = await interestEntry();
+      await payments.add(id, pay(10000));
+      final t = (await txns.get(id))!;
+      expect(t.status, TransactionStatus.partiallyPaid);
+      expect(t.settledAt, isNull);
+      expect(outstanding(t, now), Money.fromRupees(1200));
+    });
+
+    test('paying principal plus interest settles it', () async {
+      final id = await interestEntry();
+      await payments.add(id, pay(11200));
+      final t = (await txns.get(id))!;
+      expect(t.status, TransactionStatus.paid);
+      expect(t.settledAt, now);
+      expect(outstanding(t, now), Money.zero);
+    });
+
+    test('paying more than principal plus interest is blocked', () async {
+      final id = await interestEntry();
+      expect(
+        () => payments.add(id, pay(11201)),
+        throwsA(
+          isA<PaymentException>().having(
+            (e) => e.reason,
+            'reason',
+            PaymentValidation.exceedsBalance,
+          ),
+        ),
+      );
+      expect((await txns.get(id))!.paidTotal, Money.zero);
+    });
+
+    test('a settled entry stays settled and frozen when a payment is edited '
+        'without changing the amount, even much later', () async {
+      final id = await interestEntry();
+      final pid = await payments.add(id, pay(11200));
+      final later = now.add(const Duration(days: 90));
+      await PaymentRepository(db, 'u1', now: () => later).edit(
+        id,
+        Payment(
+          id: pid,
+          amount: Money.fromRupees(11200),
+          date: now,
+          note: 'updated note',
+        ),
+      );
+      final t = (await txns.get(id))!;
+      expect(t.status, TransactionStatus.paid);
+      expect(t.settledAt, now); // unchanged, interest still frozen at `now`
+    });
+
+    test('deleting the payment reopens it and interest resumes', () async {
+      final id = await interestEntry();
+      final pid = await payments.add(id, pay(11200));
+      await payments.delete(id, pid);
+      final reopened = (await txns.get(id))!;
+      expect(reopened.status, TransactionStatus.pending);
+      expect(reopened.settledAt, isNull);
+      final later = now.add(const Duration(days: 365));
+      // A second year of simple interest (another 1,200) has accrued.
+      expect(outstanding(reopened, later), Money.fromRupees(12400));
+    });
+
+    test('lowering a settled payment reopens it by the shortfall', () async {
+      final id = await interestEntry();
+      final pid = await payments.add(id, pay(11200));
+      await payments.edit(id, pay(11000, id: pid));
+      final t = (await txns.get(id))!;
+      expect(t.status, TransactionStatus.partiallyPaid);
+      expect(t.settledAt, isNull);
+      expect(outstanding(t, now), Money.fromRupees(200));
     });
   });
 

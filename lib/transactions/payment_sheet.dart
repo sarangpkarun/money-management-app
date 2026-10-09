@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/data/payment_repository.dart';
+import '../core/interest/interest.dart';
 import '../core/data/providers.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/payment.dart';
@@ -43,7 +44,9 @@ class _PaymentSheet extends ConsumerStatefulWidget {
 
 class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   late final _amount = TextEditingController(
-    text: _plain(widget.existing?.amount ?? widget.txn.balance),
+    text: _plain(
+      widget.existing?.amount ?? outstanding(widget.txn, DateTime.now()),
+    ),
   );
   late final _note = TextEditingController(text: widget.existing?.note);
   late DateTime _date = widget.existing?.date ?? DateTime.now();
@@ -56,7 +59,8 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   /// What the amount may be at most: the balance, plus what the payment being
   /// edited already covers.
   Money get _available =>
-      widget.txn.balance + (widget.existing?.amount ?? Money.zero);
+      outstanding(widget.txn, DateTime.now()) +
+      (widget.existing?.amount ?? Money.zero);
 
   @override
   void dispose() {

@@ -124,6 +124,24 @@ void main() {
     );
   });
 
+  group('interest in the net amount', () {
+    test('a borrowed entry with interest counts principal plus interest', () {
+      final loan = MoneyTransaction(
+        type: TransactionType.borrowed,
+        personId: 'a',
+        personName: 'Asha',
+        title: 't',
+        totalAmount: Money.fromRupees(10000),
+        interestType: InterestType.simple,
+        interestRate: 12,
+        createdAt: DateTime(2025, 10, 9),
+        date: DateTime(2025, 10, 9),
+      );
+      final s = summarize([asha], [loan], now: DateTime(2026, 10, 9)).single;
+      expect(s.net, Money.fromRupees(-11200));
+    });
+  });
+
   group('applyFilters', () {
     final summaries = summarize(
       [asha, ravi, meera],

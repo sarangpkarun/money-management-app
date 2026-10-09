@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../interest/interest.dart';
 import '../models/money_transaction.dart';
 import '../models/payment.dart';
 import '../money/money.dart';
@@ -40,7 +41,7 @@ class PaymentRepository {
   Future<String> add(String txnId, Payment payment) {
     final ref = _paths.payments(txnId).doc();
     return _apply(txnId, (txn, t) {
-      _check(t.balance, payment.amount);
+      _check(outstanding(t, _now()), payment.amount);
       txn.set(ref, payment.toMap());
       return payment.amount;
     }).then((_) => ref.id);
@@ -50,8 +51,9 @@ class PaymentRepository {
     final ref = _paths.payments(txnId).doc(payment.id);
     return _apply(txnId, (txn, t) async {
       final old = Payment.fromMap(payment.id, (await txn.get(ref)).data()!);
-      // The edited amount may use the balance plus what this payment already covered.
-      _check(t.balance + old.amount, payment.amount);
+      // The edited amount may use what is outstanding plus what this payment
+      // already covered.
+      _check(outstanding(t, _now()) + old.amount, payment.amount);
       txn.set(ref, payment.toMap());
       return payment.amount - old.amount;
     });
@@ -73,6 +75,11 @@ class PaymentRepository {
 
   /// Runs [change] (which writes the payment and returns the change in paid
   /// total) then updates the parent transaction in the same Firestore transaction.
+  ///
+  /// Status is judged against what is due (principal plus interest). Once an
+  /// entry is settled its interest is frozen at `settledAt`: it stays settled
+  /// while payments still cover what was due then, and only reopens (interest
+  /// resuming) if they no longer do.
   Future<void> _apply(
     String txnId,
     FutureOr<Money> Function(Transaction txn, MoneyTransaction t) change,
@@ -84,19 +91,31 @@ class PaymentRepository {
       final delta = await change(txn, t);
       final paid = t.paidTotal + delta;
       final now = _now();
-      final status = computeStatus(
-        total: t.totalAmount,
-        paid: paid,
-        dueDate: t.dueDate,
-        now: now,
-      );
+
+      final Money due;
+      final TransactionStatus status;
+      final DateTime? settledAt;
+      final frozenAt = t.settledAt;
+      if (frozenAt != null && paid >= amountDueAt(t, frozenAt)) {
+        due = amountDueAt(t, frozenAt);
+        status = TransactionStatus.paid;
+        settledAt = frozenAt;
+      } else {
+        due = amountDueAt(t, now);
+        status = computeStatus(
+          total: due,
+          paid: paid,
+          dueDate: t.dueDate,
+          now: now,
+        );
+        settledAt = status == TransactionStatus.paid ? now : null;
+      }
+      final left = due - paid;
       txn.update(txnRef, {
         'paidTotal': paid.paise,
-        'balance': (t.totalAmount - paid).paise,
+        'balance': (left.isNegative ? Money.zero : left).paise,
         'status': status.name,
-        'settledAt': status == TransactionStatus.paid
-            ? Timestamp.fromDate(now)
-            : null,
+        'settledAt': settledAt == null ? null : Timestamp.fromDate(settledAt),
         'lastActivityAt': Timestamp.fromDate(now),
       });
     });

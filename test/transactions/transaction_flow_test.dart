@@ -312,6 +312,157 @@ void main() {
     });
   });
 
+  group('Interest and repayment (borrowed)', () {
+    Future<String> seedLoan({
+      InterestType interest = InterestType.simple,
+      double rate = 12,
+      int daysAgo = 365,
+    }) async {
+      final personId = await people.add(
+        Person(name: 'Ravi', createdAt: DateTime(2026, 1, 1)),
+      );
+      final start = DateTime.now().subtract(Duration(days: daysAgo));
+      return txns.add(
+        MoneyTransaction(
+          type: TransactionType.borrowed,
+          personId: personId,
+          personName: 'Ravi',
+          title: 'Loan',
+          totalAmount: Money.fromRupees(10000),
+          interestType: interest,
+          interestRate: rate,
+          createdAt: start,
+          date: start,
+        ),
+      );
+    }
+
+    testWidgets('interest controls appear only for Borrowed', (tester) async {
+      await pumpApp(tester, const AddEntryScreen());
+      expect(find.text('Interest'), findsNothing);
+      await tester.tap(find.text('Borrowed'));
+      await tester.pumpAndSettle();
+      expect(find.text('Interest'), findsOneWidget);
+      expect(find.text('Repayment'), findsOneWidget);
+      // The rate field appears once an interest type is chosen.
+      expect(field('Interest rate (% per year)'), findsNothing);
+      await tester.tap(find.text('Simple'));
+      await tester.pumpAndSettle();
+      expect(field('Interest rate (% per year)'), findsOneWidget);
+      await tester.tap(find.text('Lent'));
+      await tester.pumpAndSettle();
+      expect(find.text('Interest'), findsNothing);
+    });
+
+    testWidgets('a rate is required when interest is chosen', (tester) async {
+      await pumpApp(tester, const AddEntryScreen());
+      await tester.tap(find.text('Borrowed'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('Person'), 'Ravi');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Add 'Ravi' as new person"));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('Amount'), '10000');
+      await tester.tap(find.text('Compound'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('yearly rate above 0'), findsOneWidget);
+      expect(
+        (await db.collection('users/u1/transactions').get()).docs,
+        isEmpty,
+      );
+    });
+
+    testWidgets('saves interest and repayment type and shows them', (
+      tester,
+    ) async {
+      await pumpApp(tester, const AddEntryScreen());
+      await tester.tap(find.text('Borrowed'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('Person'), 'Ravi');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Add 'Ravi' as new person"));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('Amount'), '10000');
+      await tester.tap(find.text('Simple'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('Interest rate (% per year)'), '12');
+      await tester.ensureVisible(find.text('Monthly instalments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Monthly instalments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Simple interest at 12% a year'), findsOneWidget);
+      expect(find.text('Repayment: Monthly instalments'), findsOneWidget);
+      final doc = (await db.collection('users/u1/transactions').get())
+          .docs
+          .single
+          .data();
+      expect(doc['interestType'], 'simple');
+      expect(doc['interestRate'], 12);
+      expect(doc['repaymentType'], 'monthly');
+    });
+
+    testWidgets('detail shows principal plus interest due', (tester) async {
+      final id = await seedLoan();
+      await pumpApp(tester, EntryDetailScreen(transactionId: id));
+      expect(find.text('Interest to date ₹1,200'), findsOneWidget);
+      expect(
+        find.text(
+          'Paid ₹0 of ₹11,200 · Balance ₹11,200 · incl. ₹1,200 interest',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the pay sheet is limited to principal plus interest', (
+      tester,
+    ) async {
+      final id = await seedLoan();
+      await pumpApp(tester, EntryDetailScreen(transactionId: id));
+      await tester.tap(find.text('Pay Now'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(field('Amount')).controller!.text,
+        '11200',
+      );
+      await tester.enterText(field('Amount'), '11201');
+      await tester.tap(find.text('Save payment'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Cannot be more than the balance of ₹11,200'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('paying the principal alone is not enough; the full amount '
+        'settles it', (tester) async {
+      final id = await seedLoan();
+      await pumpApp(tester, EntryDetailScreen(transactionId: id));
+      await tester.tap(find.text('Pay Now'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('Amount'), '10000');
+      await tester.tap(find.text('Save payment'));
+      await tester.pumpAndSettle();
+      expect(find.text('Partially Paid'), findsOneWidget);
+      expect(find.text('Pay Now'), findsOneWidget);
+
+      await tester.tap(find.text('Pay Now'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(field('Amount')).controller!.text,
+        '1200',
+      );
+      await tester.tap(find.text('Save payment'));
+      await tester.pumpAndSettle();
+      expect(find.text('Paid'), findsOneWidget);
+      expect(find.text('Pay Now'), findsNothing);
+    });
+  });
+
   group('Entries list', () {
     testWidgets('lists entries with status and opens the detail', (
       tester,
