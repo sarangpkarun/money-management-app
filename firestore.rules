@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Only the signed-in owner with a verified email may touch their own data.
+    function isVerifiedOwner(uid) {
+      return request.auth != null
+          && request.auth.uid == uid
+          && request.auth.token.email_verified == true;
+    }
+
+    match /users/{uid}/{document=**} {
+      allow read, write: if isVerifiedOwner(uid);
+    }
+
+    // Everything else is denied by default.
+  }
+}

@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/data/user_repository.dart';
-import '../core/models/app_user.dart';
 
 String authErrorMessage(String code) => switch (code) {
   'wrong-password' ||
@@ -62,7 +61,9 @@ class AuthRepository {
     }
   }
 
-  /// Creates the account, stores the profile and sends the verification email.
+  /// Creates the account and sends the verification email. The Firestore
+  /// profile is created later, once the email is verified (the security rules
+  /// only allow verified users to write).
   Future<void> signUp({
     required String name,
     required String email,
@@ -74,7 +75,6 @@ class AuthRepository {
     );
     final user = cred.user!;
     await user.updateDisplayName(name.trim());
-    await UserRepository(_db, user.uid).save(AppUser(name: name.trim()));
     await user.sendEmailVerification();
   });
 

@@ -22,6 +22,8 @@ class AuthGate extends ConsumerWidget {
       data: (user) {
         if (user == null) return const LoginScreen();
         if (!user.emailVerified) return VerifyEmailScreen(user: user);
+        // Fire-and-forget: creates the profile doc; failures must not block use.
+        ref.watch(profileBootstrapProvider);
         return home;
       },
     );

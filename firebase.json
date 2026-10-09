@@ -1,1 +1,43 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"money-management-app-ab883","appId":"1:29079874947:android:b69ef6851411acc4e31ab6","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"money-management-app-ab883","configurations":{"android":"1:29079874947:android:b69ef6851411acc4e31ab6","ios":"1:29079874947:ios:505d9296bea0cc7fe31ab6"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "money-management-app-ab883",
+          "appId": "1:29079874947:android:b69ef6851411acc4e31ab6",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "money-management-app-ab883",
+          "configurations": {
+            "android": "1:29079874947:android:b69ef6851411acc4e31ab6",
+            "ios": "1:29079874947:ios:505d9296bea0cc7fe31ab6"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

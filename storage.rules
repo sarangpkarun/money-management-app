@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isVerifiedOwner(uid) {
+      return request.auth != null
+          && request.auth.uid == uid
+          && request.auth.token.email_verified == true;
+    }
+
+    match /users/{uid}/{allPaths=**} {
+      allow read, delete: if isVerifiedOwner(uid);
+      // Uploads must be images under 10 MB.
+      allow create, update: if isVerifiedOwner(uid)
+          && request.resource.size < 10 * 1024 * 1024
+          && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

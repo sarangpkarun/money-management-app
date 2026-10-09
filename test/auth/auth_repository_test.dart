@@ -16,19 +16,25 @@ void main() {
     repo = AuthRepository(auth, db);
   });
 
-  test('signUp creates the user, sets the name and saves a profile', () async {
-    await repo.signUp(
-      name: 'Sarang',
-      email: 'a@b.com',
-      password: 'password123',
-    );
-    final user = auth.currentUser!;
-    expect(user.email, 'a@b.com');
-    expect(user.displayName, 'Sarang');
-    final profile = await db.collection('users').doc(user.uid).get();
-    expect(profile.data()!['name'], 'Sarang');
-    expect(profile.data()!['currency'], 'INR');
-  });
+  test(
+    'signUp creates the user and sets the name, without touching Firestore',
+    () async {
+      await repo.signUp(
+        name: 'Sarang',
+        email: 'a@b.com',
+        password: 'password123',
+      );
+      final user = auth.currentUser!;
+      expect(user.email, 'a@b.com');
+      expect(user.displayName, 'Sarang');
+      // The profile is created after email verification (see ensureProfile), as
+      // the security rules only allow verified users to write.
+      expect(
+        (await db.collection('users').doc(user.uid).get()).exists,
+        isFalse,
+      );
+    },
+  );
 
   test('signIn then signOut', () async {
     await repo.signUp(

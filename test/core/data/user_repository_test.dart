@@ -22,6 +22,20 @@ void main() {
     expect(user.timezone, 'UTC');
   });
 
+  test(
+    'ensureProfile creates a default profile once and never overwrites',
+    () async {
+      await repo.ensureProfile('Sarang');
+      expect((await repo.get())!.name, 'Sarang');
+      expect((await repo.get())!.currency, 'INR');
+
+      await repo.save(const AppUser(name: 'Changed', currency: 'USD'));
+      await repo.ensureProfile('Sarang');
+      expect((await repo.get())!.name, 'Changed');
+      expect((await repo.get())!.currency, 'USD');
+    },
+  );
+
   test('watch emits profile updates', () async {
     await repo.save(const AppUser(name: 'A'));
     final first = await repo.watch().first;

@@ -22,6 +22,12 @@ class UserRepository {
   Future<void> save(AppUser user) =>
       _paths.user.set(user.toMap(), SetOptions(merge: true));
 
+  /// Creates a default profile if none exists yet; never overwrites one.
+  Future<void> ensureProfile(String fallbackName) async {
+    if ((await _paths.user.get()).exists) return;
+    await save(AppUser(name: fallbackName));
+  }
+
   /// Permanently erases everything stored under `users/{uid}`: payments, then
   /// transactions, people, reminders and finally the profile document.
   Future<void> deleteAllData() async {
