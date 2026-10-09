@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "29079874947",
+    "project_id": "money-management-app-ab883",
+    "storage_bucket": "money-management-app-ab883.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:29079874947:android:b69ef6851411acc4e31ab6",
+        "android_client_info": {
+          "package_name": "com.sarang.moneymanager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAZx7kgATGDWFwHru150osfrQjLYY3sjM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
