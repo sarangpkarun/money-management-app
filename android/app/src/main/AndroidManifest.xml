@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <application
-        android:label="money_manager"
+        android:label="Money Manager"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
