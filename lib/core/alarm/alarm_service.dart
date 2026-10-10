@@ -143,6 +143,53 @@ class PluginAlarmGateway implements AlarmGateway {
     );
   }
 
+  /// Developer bisect aid: the exact Phase 0 spike configuration (one fixed
+  /// channel, no vibration pattern, no payload), which rang on this phone.
+  Future<void> scheduleLegacySpike(Duration after) async {
+    await AlarmService.init();
+    const channel = 'alarm_spike_v2';
+    const sound = UriAndroidNotificationSound(
+      'content://settings/system/alarm_alert',
+    );
+    await _android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        channel,
+        'Alarms',
+        description: 'Reminder alarms',
+        importance: Importance.max,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+        sound: sound,
+        playSound: true,
+        enableVibration: true,
+      ),
+    );
+    await _plugin.zonedSchedule(
+      id: 1,
+      scheduledDate: tz.TZDateTime.now(tz.UTC).add(after),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel,
+          'Alarms',
+          channelDescription: 'Reminder alarms',
+          importance: Importance.max,
+          priority: Priority.max,
+          category: AndroidNotificationCategory.alarm,
+          fullScreenIntent: true,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
+          sound: sound,
+          playSound: true,
+          enableVibration: true,
+          additionalFlags: Int32List.fromList([_insistentFlag]),
+          ongoing: true,
+          autoCancel: false,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.alarmClock,
+      title: 'Spike-config alarm',
+      body: 'Old configuration',
+    );
+  }
+
   @override
   Future<void> cancel(int id) async {
     await AlarmService.init();

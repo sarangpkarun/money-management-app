@@ -92,7 +92,7 @@ Goal: scheduled payments and alarms.
 - [x] Pay-to-person instalments: generate, skip month, change amount, extra payment
 - [x] Foreclosure / part-prepayment calculator (labelled as estimate); late fee and no-cost EMI options
 - [x] Reminders: CRUD, repeat rules, snooze (5/10/15), custom tone/volume/vibration (data, repeat engine and screens; nothing rings until the alarm service item below)
-- [ ] Production alarm service from Phase 0 spike; re-schedule on boot and on app start (code done and tested; the on-phone matrix below is still to be run before ticking)
+- [x] Production alarm service from Phase 0 spike; re-schedule on boot and on app start (user-tested on the Xiaomi: rings with sound and full screen when the phone is locked; while the phone is in use Android shows only a pop-up, which is normal)
 - [ ] Auto reminders for linked payments: 1 day before, due day, overdue
 - [ ] Upcoming / Completed / Missed lists; "Notification permission help" screen
 - [ ] FCM push + Cloud Functions: scheduled overdue/status job, account-deletion cleanup

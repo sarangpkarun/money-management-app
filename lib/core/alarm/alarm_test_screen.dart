@@ -86,12 +86,27 @@ class _AlarmTestScreenState extends ConsumerState<AlarmTestScreen> {
             const SizedBox(height: 8),
             FilledButton(
               onPressed: () => _schedule(const Duration(minutes: 1)),
-              child: const Text('Schedule in 1 min'),
+              child: const Text('B: new reminder config, 1 min'),
             ),
             const SizedBox(height: 8),
             FilledButton(
               onPressed: () => _schedule(const Duration(minutes: 5)),
               child: const Text('Schedule in 5 min'),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.tonal(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await PluginAlarmGateway().scheduleLegacySpike(
+                  const Duration(minutes: 1),
+                );
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Old spike-config alarm in 1 min'),
+                  ),
+                );
+              },
+              child: const Text('A: old spike config, 1 min'),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
