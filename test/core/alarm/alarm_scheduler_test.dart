@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_manager/core/alarm/alarm_plan.dart';
 import 'package:money_manager/core/alarm/alarm_scheduler.dart';
+import 'package:money_manager/core/models/money_transaction.dart';
+import 'package:money_manager/core/money/money.dart';
+import 'package:money_manager/core/status/transaction_status.dart';
 import 'package:money_manager/core/models/reminder.dart';
 
 import '../../support/fake_alarm_gateway.dart';
@@ -188,5 +191,127 @@ void main() {
     final p = await sched.ensurePermissions();
     expect(gw.permissionRequests, 1);
     expect(p.ok, isFalse);
+  });
+
+  group('automatic payment alarms', () {
+    MoneyTransaction txn(
+      String id,
+      DateTime due, {
+      bool auto = true,
+      TransactionStatus status = TransactionStatus.pending,
+    }) => MoneyTransaction(
+      id: id,
+      type: TransactionType.lent,
+      personId: 'p',
+      personName: 'Asha',
+      title: 'Loan',
+      totalAmount: Money.fromRupees(100),
+      status: status,
+      dueDate: due,
+      createdAt: DateTime(2026, 1, 1),
+      autoReminders: auto,
+    );
+
+    test('they are scheduled alongside manual reminders, once', () async {
+      final txns = [txn('a', DateTime(2030, 1, 10))];
+      final rs = [rem('r', DateTime(2030, 1, 8, 9))];
+      final r = await sched.sync(rs, now, transactions: txns);
+      expect(r.scheduled, 4);
+      final again = await sched.sync(rs, now, transactions: txns);
+      expect(again.scheduled, 0);
+      expect(again.cancelled, 0);
+    });
+
+    test('paying the entry cancels its alarms', () async {
+      await sched.sync(
+        const [],
+        now,
+        transactions: [txn('a', DateTime(2030, 1, 10))],
+      );
+      expect(gw.scheduled.length, 3);
+      final r = await sched.sync(
+        const [],
+        now,
+        transactions: [
+          txn('a', DateTime(2030, 1, 10), status: TransactionStatus.paid),
+        ],
+      );
+      expect(r.cancelled, 3);
+      expect(gw.scheduled, isEmpty);
+    });
+
+    test('switching them off, or deleting the entry, cancels them', () async {
+      await sched.sync(
+        const [],
+        now,
+        transactions: [txn('a', DateTime(2030, 1, 10))],
+      );
+      await sched.sync(
+        const [],
+        now,
+        transactions: [txn('a', DateTime(2030, 1, 10), auto: false)],
+      );
+      expect(gw.scheduled, isEmpty);
+      await sched.sync(
+        const [],
+        now,
+        transactions: [txn('a', DateTime(2030, 1, 10))],
+      );
+      await sched.sync(const [], now);
+      expect(gw.scheduled, isEmpty);
+    });
+
+    test('moving the due date moves the alarms', () async {
+      await sched.sync(
+        const [],
+        now,
+        transactions: [txn('a', DateTime(2030, 1, 10))],
+      );
+      await sched.sync(
+        const [],
+        now,
+        transactions: [txn('a', DateTime(2030, 1, 20))],
+      );
+      final days = gw.scheduled.values.map((a) => a.at.day).toList()..sort();
+      expect(days, [19, 20, 21]);
+    });
+
+    test(
+      'a snoozed automatic alarm outlives its ring time, until paid',
+      () async {
+        final t = txn('a', DateTime(2030, 1, 10));
+        await sched.sync(const [], now, transactions: [t]);
+        final ring = gw.scheduled.values.first; // 9 Jan 9:00
+        final snooze = snoozeAlarm(ring.payload, DateTime(2030, 1, 9, 9, 1));
+        await gw.schedule(snooze);
+        // Later the same morning: the 9 Jan ring has fired and is gone.
+        gw.scheduled.remove(ring.id);
+        await sched.sync(
+          const [],
+          DateTime(2030, 1, 9, 9, 2),
+          transactions: [t],
+        );
+        expect(gw.scheduled.containsKey(snooze.id), isTrue);
+        await sched.sync(
+          const [],
+          DateTime(2030, 1, 9, 9, 3),
+          transactions: [
+            txn('a', DateTime(2030, 1, 10), status: TransactionStatus.paid),
+          ],
+        );
+        expect(gw.scheduled.containsKey(snooze.id), isFalse);
+      },
+    );
+
+    test('quick successive syncs do not interleave', () async {
+      final txns = [txn('a', DateTime(2030, 1, 10))];
+      final results = await Future.wait([
+        sched.sync(const [], now, transactions: txns),
+        sched.sync(const [], now, transactions: txns),
+        sched.sync(const [], now, transactions: txns),
+      ]);
+      expect(results.map((r) => r.scheduled), [3, 0, 0]);
+      expect(gw.scheduled.length, 3);
+    });
   });
 }

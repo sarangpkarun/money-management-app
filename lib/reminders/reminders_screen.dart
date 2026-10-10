@@ -102,7 +102,8 @@ class RemindersScreen extends ConsumerWidget {
                 padding: EdgeInsets.all(16),
                 child: Text(
                   'Repeating reminders are scheduled about 30 rings ahead and '
-                  'topped up each time you open the app.',
+                  'topped up each time you open the app. Payment due dates '
+                  'ring automatically (switch them off on each entry).',
                   style: TextStyle(fontSize: 12),
                 ),
               ),

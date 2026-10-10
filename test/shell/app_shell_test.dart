@@ -364,6 +364,57 @@ void main() {
     });
   });
 
+  group('payment alarms', () {
+    Future<String> dueEntry() async {
+      final id = await people.add(
+        Person(name: 'Asha', createdAt: DateTime(2026, 1, 1)),
+      );
+      return txns.add(
+        MoneyTransaction(
+          type: TransactionType.lent,
+          personId: id,
+          personName: 'Asha',
+          title: 'Loan',
+          totalAmount: Money.fromRupees(1000),
+          dueDate: DateTime.now().add(const Duration(days: 10)),
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+
+    testWidgets('an entry with a due date is scheduled, three alarms', (
+      tester,
+    ) async {
+      await dueEntry();
+      await pumpShell(tester);
+      expect(gateway.scheduled.length, 3);
+      expect(
+        gateway.scheduled.values.every((a) => a.payload.entryId != null),
+        isTrue,
+      );
+    });
+
+    testWidgets('turning the switch off removes the alarms', (tester) async {
+      final id = await dueEntry();
+      await pumpShell(tester);
+      expect(gateway.scheduled.length, 3);
+      await txns.setAutoReminders(id, false);
+      await tester.pumpAndSettle();
+      expect(gateway.scheduled, isEmpty);
+      await txns.setAutoReminders(id, true);
+      await tester.pumpAndSettle();
+      expect(gateway.scheduled.length, 3);
+    });
+
+    testWidgets('deleting the entry removes them', (tester) async {
+      final id = await dueEntry();
+      await pumpShell(tester);
+      await txns.delete(id);
+      await tester.pumpAndSettle();
+      expect(gateway.scheduled, isEmpty);
+    });
+  });
+
   group('alarms', () {
     testWidgets('a reminder in the database is scheduled when the app opens', (
       tester,

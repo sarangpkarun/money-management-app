@@ -82,6 +82,10 @@ class TransactionRepository {
     });
   }
 
+  /// Turns the automatic due-date alarms for one entry on or off.
+  Future<void> setAutoReminders(String id, bool on) =>
+      _paths.transactions.doc(id).update({'autoReminders': on});
+
   /// Creates a transaction with nothing paid; status comes from the due date.
   Future<String> add(MoneyTransaction t) async {
     final fresh = MoneyTransaction(

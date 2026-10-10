@@ -5,6 +5,7 @@ import '../core/data/providers.dart';
 import '../core/interest/interest.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/payment.dart';
+import '../core/status/transaction_status.dart';
 import 'emi_payment_sheet.dart';
 import 'emi_schedule_view.dart';
 import 'entry_form_logic.dart';
@@ -232,6 +233,19 @@ class EntryDetailScreen extends ConsumerWidget {
           if (t.type == TransactionType.borrowed)
             Text('Repayment: ${repaymentLabel(t.repaymentType)}'),
           if (t.notes != null) ...[const SizedBox(height: 8), Text(t.notes!)],
+          if (t.status != TransactionStatus.paid &&
+              (t.dueDate != null || t.emiPlan != null))
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Remind me about due dates'),
+              subtitle: const Text(
+                'An alarm at 9:00 the day before, on the day, and the day after',
+              ),
+              value: t.autoReminders,
+              onChanged: (on) => ref
+                  .read(transactionRepositoryProvider)
+                  .setAutoReminders(t.id, on),
+            ),
           if (t.emiPlan != null) ...[
             const SizedBox(height: 24),
             EmiScheduleView(

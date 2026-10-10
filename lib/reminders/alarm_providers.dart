@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/alarm/alarm_gateway.dart';
 import '../core/alarm/alarm_scheduler.dart';
 import '../core/alarm/alarm_service.dart';
+import '../people/people_providers.dart';
 import 'reminder_providers.dart';
 
 /// The phone's alarm system. Tests replace it with a fake.
@@ -18,10 +19,15 @@ final alarmSchedulerProvider = Provider(
 /// again on every change. Watch it from the signed-in shell to switch it on.
 final alarmSyncProvider = Provider<void>((ref) {
   final scheduler = ref.watch(alarmSchedulerProvider);
-  ref.listen(remindersProvider, (_, next) {
-    final list = next.value;
-    if (list != null) scheduler.sync(list, DateTime.now());
-  }, fireImmediately: true);
+  void run() {
+    final reminders = ref.read(remindersProvider).value;
+    final entries = ref.read(allTransactionsProvider).value;
+    if (reminders == null || entries == null) return;
+    scheduler.sync(reminders, DateTime.now(), transactions: entries);
+  }
+
+  ref.listen(remindersProvider, (_, _) => run(), fireImmediately: true);
+  ref.listen(allTransactionsProvider, (_, _) => run(), fireImmediately: true);
 });
 
 /// Whether notifications and exact alarms are allowed right now.

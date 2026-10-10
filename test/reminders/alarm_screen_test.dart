@@ -4,7 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_manager/core/alarm/alarm_plan.dart';
 import 'package:money_manager/core/alarm/alarm_screen.dart';
+import 'package:money_manager/core/data/payment_repository.dart';
+import 'package:money_manager/core/data/people_repository.dart';
 import 'package:money_manager/core/data/providers.dart';
+import 'package:money_manager/core/data/transaction_repository.dart';
+import 'package:money_manager/core/models/money_transaction.dart';
+import 'package:money_manager/core/models/person.dart';
+import 'package:money_manager/core/money/money.dart';
 import 'package:money_manager/core/data/reminder_repository.dart';
 import 'package:money_manager/core/models/reminder.dart';
 import 'package:money_manager/reminders/alarm_providers.dart';
@@ -146,6 +152,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('ring'), findsOneWidget);
+  });
+
+  testWidgets('an automatic alarm opens its entry and stops the ring', (
+    tester,
+  ) async {
+    // A real entry for the alarm to point at.
+    final people = PeopleRepository(db, 'u1');
+    final pid = await people.add(
+      Person(name: 'Asha', createdAt: DateTime(2026, 1, 1)),
+    );
+    final txns = TransactionRepository(db, 'u1');
+    final entry = await txns.add(
+      MoneyTransaction(
+        type: TransactionType.lent,
+        personId: pid,
+        personName: 'Asha',
+        title: 'Loan',
+        totalAmount: Money.fromRupees(1000),
+        createdAt: DateTime(2026, 1, 1),
+      ),
+    );
+    final p = AlarmPayload(
+      reminderId: 'auto:$entry:0:d',
+      title: 'Collect ₹1,000 from Asha · due today',
+      snoozeMinutes: 10,
+      tone: ReminderTone.alarm,
+      vibration: ReminderVibration.long,
+      at: DateTime(2030, 1, 8, 9),
+      entryId: entry,
+    );
+    gateway.foreign[77] = p.encode();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          alarmGatewayProvider.overrideWithValue(gateway),
+          reminderRepositoryProvider.overrideWithValue(repo),
+          peopleRepositoryProvider.overrideWithValue(people),
+          transactionRepositoryProvider.overrideWithValue(txns),
+          paymentRepositoryProvider.overrideWithValue(
+            PaymentRepository(db, 'u1'),
+          ),
+        ],
+        child: MaterialApp(home: AlarmScreen(id: 77, payload: p)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('View entry'), findsOneWidget);
+    await tester.tap(find.text('View entry'));
+    await tester.pumpAndSettle();
+    expect(gateway.foreign.containsKey(77), isFalse);
+    expect(find.text('Asha'), findsWidgets); // the entry detail
+    expect(find.text('Remind me about due dates'), findsNothing); // no due date
+  });
+
+  testWidgets('a manual reminder has no View entry button', (tester) async {
+    final (_, p) = await seed();
+    await pump(tester, p);
+    expect(find.text('View entry'), findsNothing);
   });
 
   testWidgets('a snoozed ring says so', (tester) async {

@@ -32,6 +32,7 @@ class MoneyTransaction {
     this.date,
     this.notes,
     this.emiPlan,
+    this.autoReminders = true,
   });
 
   final String id;
@@ -56,6 +57,9 @@ class MoneyTransaction {
 
   /// Terms and schedule when this is an EMI purchase.
   final EmiPlan? emiPlan;
+
+  /// Whether the app rings automatically before, on and after the due date.
+  final bool autoReminders;
 
   DateTime get entryDate => date ?? createdAt;
 
@@ -85,6 +89,7 @@ class MoneyTransaction {
     'lastActivityAt': Timestamp.fromDate(lastActivity),
     'date': date == null ? null : Timestamp.fromDate(date!),
     'notes': notes,
+    if (!autoReminders) 'autoReminders': false,
     if (emiPlan != null) 'emiPlan': emiPlan!.toMap(),
     if (emiPlan != null) 'schedule': emiPlan!.scheduleToMaps(),
   };
@@ -111,6 +116,7 @@ class MoneyTransaction {
       lastActivityAt: ts('lastActivityAt'),
       date: ts('date'),
       notes: m['notes'] as String?,
+      autoReminders: m['autoReminders'] != false,
       emiPlan: m['emiPlan'] == null
           ? null
           : EmiPlan.fromMaps(

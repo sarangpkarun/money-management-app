@@ -1,6 +1,8 @@
+import '../models/money_transaction.dart';
 import '../models/reminder.dart';
 import 'alarm_gateway.dart';
 import 'alarm_plan.dart';
+import 'auto_alarms.dart';
 
 /// What a sync did.
 class SyncResult {
@@ -24,12 +26,30 @@ class AlarmScheduler {
 
   final AlarmGateway _gateway;
 
-  Future<SyncResult> sync(List<Reminder> reminders, DateTime now) async {
-    final plan = planAlarms(reminders, now);
+  // Syncs run one after another so two quick changes never interleave.
+  Future<void> _queue = Future.value();
+
+  Future<SyncResult> sync(
+    List<Reminder> reminders,
+    DateTime now, {
+    List<MoneyTransaction> transactions = const [],
+  }) {
+    final run = _queue.then((_) => _sync(reminders, transactions, now));
+    _queue = run.then((_) {}, onError: (_) {});
+    return run;
+  }
+
+  Future<SyncResult> _sync(
+    List<Reminder> reminders,
+    List<MoneyTransaction> transactions,
+    DateTime now,
+  ) async {
+    final plan = planAllAlarms(reminders, transactions, now);
     final planned = {for (final a in plan) a.id: a};
     final active = {
       for (final r in reminders)
         if (!r.done) r.id,
+      ...openAutoIds(transactions, now),
     };
     final ours = [
       for (final p in await _gateway.pending())

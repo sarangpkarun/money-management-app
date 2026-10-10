@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../reminders/alarm_providers.dart';
+import '../../transactions/entry_detail_screen.dart';
 import '../data/providers.dart';
 import 'alarm_plan.dart';
 
@@ -38,6 +39,17 @@ class AlarmScreen extends ConsumerWidget {
     await gateway.cancel(id);
     await gateway.schedule(snoozeAlarm(payload, DateTime.now()));
     if (context.mounted) Navigator.of(context).pop();
+  }
+
+  /// Stops the ring and opens the entry this alarm is about.
+  Future<void> _viewEntry(BuildContext context, WidgetRef ref) async {
+    await ref.read(alarmGatewayProvider).cancel(id);
+    if (!context.mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => EntryDetailScreen(transactionId: payload.entryId!),
+      ),
+    );
   }
 
   @override
@@ -90,6 +102,17 @@ class AlarmScreen extends ConsumerWidget {
                     child: Text('Snooze ${payload.snoozeMinutes} min'),
                   ),
                 ),
+                if (payload.entryId != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
+                      onPressed: () => _viewEntry(context, ref),
+                      child: const Text('View entry'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,

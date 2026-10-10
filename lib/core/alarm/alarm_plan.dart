@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import '../models/money_transaction.dart';
 import '../models/reminder.dart';
 import '../reminders/repeat.dart';
+import 'auto_alarms.dart';
 
 /// Every alarm payload starts with this, so the scheduler can tell its own
 /// alarms from anything else the plugin has pending.
@@ -31,6 +33,7 @@ class AlarmPayload {
     required this.at,
     this.snoozed = false,
     this.once = false,
+    this.entryId,
   });
 
   final String reminderId;
@@ -47,6 +50,9 @@ class AlarmPayload {
   /// True for a reminder that does not repeat (dismissing it finishes it).
   final bool once;
 
+  /// The money entry an automatic payment alarm is about.
+  final String? entryId;
+
   String encode() =>
       alarmPayloadPrefix +
       jsonEncode({
@@ -59,6 +65,7 @@ class AlarmPayload {
         'at': at.millisecondsSinceEpoch,
         if (snoozed) 'sz': true,
         if (once) 'o': true,
+        if (entryId != null) 'x': entryId,
       });
 
   /// Null when [raw] is not one of our payloads or is damaged.
@@ -88,6 +95,7 @@ class AlarmPayload {
         at: DateTime.fromMillisecondsSinceEpoch(m['at'] as int),
         snoozed: m['sz'] == true,
         once: m['o'] == true,
+        entryId: m['x'] as String?,
       );
     } catch (_) {
       return null;
@@ -104,6 +112,7 @@ class AlarmPayload {
     at: at ?? this.at,
     snoozed: snoozed ?? this.snoozed,
     once: once,
+    entryId: entryId,
   );
 }
 
@@ -135,18 +144,31 @@ int alarmId(int key, int slot) => (key << 5) | slot;
 int keyOfAlarmId(int id) => id >> 5;
 int slotOfAlarmId(int id) => id & 31;
 
-/// The alarms that should be pending at [now]: for each active reminder its next
-/// rings (up to 30, within 60 days), the soonest 200 overall. Done reminders and
-/// passed one-offs have none.
-///
-/// [hash] gives a reminder's key; two reminders that land on the same key are
-/// separated by probing (in id order), so alarm ids never clash.
+/// The alarms that should be pending at [now] for [reminders] alone.
 List<PlannedAlarm> planAlarms(
   List<Reminder> reminders,
   DateTime now, {
   int Function(String id) hash = reminderKey,
+}) => planAllAlarms(reminders, const [], now, hash: hash);
+
+/// The alarms that should be pending at [now]: for each active reminder its next
+/// rings (up to 30, within 60 days), plus the automatic payment alarms of
+/// [transactions] in the same window, the soonest 200 overall. Done reminders
+/// and passed one-offs have none.
+///
+/// [hash] gives an id's key; two ids that land on the same key are separated by
+/// probing (in id order), so alarm ids never clash.
+List<PlannedAlarm> planAllAlarms(
+  List<Reminder> reminders,
+  List<MoneyTransaction> transactions,
+  DateTime now, {
+  int Function(String id) hash = reminderKey,
 }) {
-  final keys = reminderKeys(reminders, hash: hash);
+  final autos = autoRings(transactions, now);
+  final keys = keysForIds([
+    for (final r in reminders) r.id,
+    for (final a in autos) a.id,
+  ], hash: hash);
   final end = now.add(_horizon);
   final all = <PlannedAlarm>[];
   for (final r in reminders) {
@@ -173,6 +195,10 @@ List<PlannedAlarm> planAlarms(
       next = nextOccurrence(r, next);
     }
   }
+  for (final a in autos) {
+    if (a.payload.at.isAfter(end)) continue;
+    all.add(PlannedAlarm(id: alarmId(keys[a.id]!, 0), payload: a.payload));
+  }
   all.sort((a, b) => a.at.compareTo(b.at));
   return all.length > _totalCap ? all.sublist(0, _totalCap) : all;
 }
@@ -181,11 +207,17 @@ List<PlannedAlarm> planAlarms(
 Map<String, int> reminderKeys(
   List<Reminder> reminders, {
   int Function(String id) hash = reminderKey,
+}) => keysForIds([for (final r in reminders) r.id], hash: hash);
+
+/// A unique key for each id, in id order: a clash is moved to the next free key.
+Map<String, int> keysForIds(
+  Iterable<String> ids, {
+  int Function(String id) hash = reminderKey,
 }) {
-  final ids = [for (final r in reminders) r.id]..sort();
+  final sorted = ids.toList()..sort();
   final taken = <int>{};
   final out = <String, int>{};
-  for (final id in ids) {
+  for (final id in sorted) {
     var k = hash(id) & _keyMask;
     while (!taken.add(k)) {
       k = (k + 1) & _keyMask;
