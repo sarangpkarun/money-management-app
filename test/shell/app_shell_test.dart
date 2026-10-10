@@ -118,7 +118,7 @@ void main() {
 
       await tester.tap(tab('Reminders'));
       await tester.pumpAndSettle();
-      expect(find.text('No reminders yet'), findsOneWidget);
+      expect(find.text('Nothing coming up'), findsOneWidget);
 
       await tester.tap(tab('Settings'));
       await tester.pumpAndSettle();
@@ -301,12 +301,20 @@ void main() {
         'Profile',
         'History',
         'All entries',
+        'Alarm and notification help',
         'Alarm test (developer)',
         'About',
         'Log out',
       ]) {
         expect(find.text(t), findsOneWidget, reason: t);
       }
+    });
+
+    testWidgets('Alarm and notification help opens', (tester) async {
+      await openSettings(tester);
+      await tester.tap(find.text('Alarm and notification help'));
+      await tester.pumpAndSettle();
+      expect(find.text('Notifications'), findsOneWidget);
     });
 
     testWidgets('History and Profile open', (tester) async {

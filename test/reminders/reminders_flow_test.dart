@@ -85,7 +85,7 @@ void main() {
   group('list', () {
     testWidgets('empty state', (tester) async {
       await pump(tester);
-      expect(find.text('No reminders yet'), findsOneWidget);
+      expect(find.text('Nothing coming up'), findsOneWidget);
       expect(find.text('Add reminder'), findsOneWidget);
     });
 
@@ -117,22 +117,38 @@ void main() {
       expect(find.textContaining('2020'), findsNothing);
     });
 
-    testWidgets('a passed one-off is marked passed, not hidden', (
+    testWidgets('a passed one-off is under Missed, not Upcoming', (
       tester,
     ) async {
       await repo.add(rem('Old', DateTime(2020, 1, 1, 9)));
       await pump(tester);
-      expect(find.textContaining('Passed'), findsOneWidget);
+      expect(find.text('Old'), findsNothing); // Upcoming
+      expect(find.text('Missed (1)'), findsOneWidget);
+      await tester.tap(find.text('Missed (1)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Old'), findsOneWidget);
+      expect(find.textContaining('tap to reschedule'), findsOneWidget);
     });
 
-    testWidgets('done reminders sit under a Done heading', (tester) async {
+    testWidgets('done reminders are under Completed, not Upcoming', (
+      tester,
+    ) async {
       await repo.add(rem('Active', DateTime(2099, 1, 1, 9)));
       await repo.add(rem('Finished', DateTime(2099, 2, 1, 9), done: true));
       await pump(tester);
-      expect(find.text('Done'), findsWidgets);
-      final heading = tester.getTopLeft(find.text('Done').first).dy;
-      expect(tester.getTopLeft(find.text('Active')).dy < heading, isTrue);
-      expect(tester.getTopLeft(find.text('Finished')).dy > heading, isTrue);
+      expect(find.text('Active'), findsOneWidget);
+      expect(find.text('Finished'), findsNothing);
+      await tester.tap(find.text('Completed'));
+      await tester.pumpAndSettle();
+      expect(find.text('Finished'), findsOneWidget);
+      expect(find.text('Active'), findsNothing);
+    });
+
+    testWidgets('the Missed tab shows a count only when something is missed', (
+      tester,
+    ) async {
+      await pump(tester);
+      expect(find.text('Missed'), findsOneWidget);
     });
   });
 
@@ -270,7 +286,11 @@ void main() {
 
     testWidgets('an old one-off can still be edited', (tester) async {
       await repo.add(rem('Old', DateTime(2020, 1, 1, 9)));
-      await openFirst(tester, 'Old');
+      await pump(tester);
+      await tester.tap(find.text('Missed (1)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Old'));
+      await tester.pumpAndSettle();
       await tester.enterText(field('Title'), 'Old renamed');
       await save(tester);
       expect((await stored()).single['title'], 'Old renamed');
@@ -305,9 +325,10 @@ void main() {
       await tester.tap(find.text('Mark done'));
       await tester.pumpAndSettle();
       expect((await stored()).single['done'], isTrue);
-      expect(find.text('Done'), findsWidgets);
-      await tester.tap(find.text('Task'));
+      expect(find.text('Task'), findsNothing); // gone from Upcoming
+      await tester.tap(find.text('Completed'));
       await tester.pumpAndSettle();
+      expect(find.text('Task'), findsOneWidget);
       await tester.tap(find.text('Reopen'));
       await tester.pumpAndSettle();
       expect((await stored()).single['done'], isFalse);
@@ -326,7 +347,7 @@ void main() {
       await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();
       expect(await stored(), isEmpty);
-      expect(find.text('No reminders yet'), findsOneWidget);
+      expect(find.text('Nothing coming up'), findsOneWidget);
     });
   });
 

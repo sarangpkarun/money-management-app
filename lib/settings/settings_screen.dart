@@ -6,6 +6,7 @@ import '../core/alarm/alarm_test_screen.dart';
 import '../history/history_screen.dart';
 import '../reminders/alarm_providers.dart';
 import '../transactions/entries_screen.dart';
+import 'alarm_permission_help_screen.dart';
 import 'profile_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -68,6 +69,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => _open(context, const EntriesScreen()),
           ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.notifications_active_outlined),
+            title: const Text('Alarm and notification help'),
+            subtitle: const Text('Make sure reminders can ring'),
+            onTap: () => _open(context, const AlarmPermissionHelpScreen()),
+          ),
           ListTile(
             leading: const Icon(Icons.alarm),
             title: const Text('Alarm test (developer)'),

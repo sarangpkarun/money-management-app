@@ -1,116 +1,265 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/data/providers.dart';
 import '../core/models/reminder.dart';
-import '../core/reminders/repeat.dart';
 import '../core/theme/app_colors.dart';
+import '../settings/alarm_permission_help_screen.dart';
+import '../transactions/entry_detail_screen.dart';
 import 'alarm_providers.dart';
 import 'reminder_form_logic.dart';
 import 'reminder_form_screen.dart';
-import 'reminder_providers.dart';
+import 'reminder_list_providers.dart';
+import 'reminder_lists.dart';
 
-/// The user's reminders: active ones by next ring, finished ones below.
+/// The user's reminders in three lists: Upcoming (including automatic payment
+/// alarms), Completed and Missed.
 class RemindersScreen extends ConsumerWidget {
   const RemindersScreen({super.key});
 
-  void _open(BuildContext context, [Reminder? r]) {
+  void _openForm(BuildContext context, [Reminder? r]) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => ReminderFormScreen(existing: r)),
     );
   }
 
+  void _openHelp(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const AlarmPermissionHelpScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final reminders = ref.watch(remindersProvider);
-    final now = DateTime.now();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reminders')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _open(context),
-        icon: const Icon(Icons.add_alarm),
-        label: const Text('Add reminder'),
-      ),
-      body: reminders.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load reminders: $e')),
-        data: (all) {
-          if (all.isEmpty) return const _Empty();
-          final perms = ref.watch(alarmPermissionsProvider).value;
-          final active = [
-            for (final r in all)
-              if (!r.done) r,
-          ];
-          final done = [
-            for (final r in all)
-              if (r.done) r,
-          ];
-          // Ones with a coming ring first (soonest first), then passed ones.
-          final next = {for (final r in active) r.id: nextOccurrence(r, now)};
-          active.sort((a, b) {
-            final x = next[a.id];
-            final y = next[b.id];
-            if (x == null && y == null) return b.at.compareTo(a.at);
-            if (x == null) return 1;
-            if (y == null) return -1;
-            return x.compareTo(y);
-          });
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 88),
-            children: [
-              if (perms != null && !perms.ok)
-                MaterialBanner(
-                  content: const Text(
-                    'Alarms are off. Allow notifications and exact alarms so '
-                    'reminders can ring.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () async {
-                        await ref
-                            .read(alarmSchedulerProvider)
-                            .ensurePermissions();
-                        ref.invalidate(alarmPermissionsProvider);
-                      },
-                      child: const Text('Allow'),
-                    ),
-                  ],
-                ),
-              if (active.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('Nothing coming up'),
-                ),
-              for (final r in active)
-                _Tile(
-                  reminder: r,
-                  next: next[r.id],
-                  onTap: () => _open(context, r),
-                ),
-              if (done.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
-                  child: Text('Done'),
-                ),
-                for (final r in done)
-                  _Tile(
-                    reminder: r,
-                    next: null,
-                    onTap: () => _open(context, r),
-                  ),
-              ],
-              const Padding(
-                padding: EdgeInsets.all(16),
+    final lists = ref.watch(reminderListsProvider);
+    final data = lists.value;
+    final missedCount = data?.missed.length ?? 0;
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Reminders'),
+          actions: [
+            IconButton(
+              tooltip: 'Alarm and notification help',
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => _openHelp(context),
+            ),
+          ],
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Upcoming'),
+              Tab(text: 'Completed'),
+              Tab(
                 child: Text(
-                  'Repeating reminders are scheduled about 30 rings ahead and '
-                  'topped up each time you open the app. Payment due dates '
-                  'ring automatically (switch them off on each entry).',
-                  style: TextStyle(fontSize: 12),
+                  missedCount > 0 ? 'Missed ($missedCount)' : 'Missed',
+                  style: missedCount > 0
+                      ? TextStyle(color: AppColors.pay(context))
+                      : null,
                 ),
               ),
             ],
-          );
-        },
+          ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _openForm(context),
+          icon: const Icon(Icons.add_alarm),
+          label: const Text('Add reminder'),
+        ),
+        body: lists.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Could not load reminders: $e')),
+          data: (l) => Column(
+            children: [
+              _PermissionBanner(onHelp: () => _openHelp(context)),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _UpcomingList(
+                      lists: l,
+                      onOpen: (r) => _openForm(context, r),
+                    ),
+                    _CompletedList(
+                      items: l.completed,
+                      onOpen: (r) => _openForm(context, r),
+                    ),
+                    _MissedList(
+                      items: l.missed,
+                      onOpen: (r) => _openForm(context, r),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _PermissionBanner extends ConsumerWidget {
+  const _PermissionBanner({required this.onHelp});
+
+  final VoidCallback onHelp;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final perms = ref.watch(alarmPermissionsProvider).value;
+    if (perms == null || perms.ok) return const SizedBox.shrink();
+    return MaterialBanner(
+      content: const Text(
+        'Alarms are off. Allow notifications and exact alarms so reminders '
+        'can ring.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            await ref.read(alarmSchedulerProvider).ensurePermissions();
+            ref.invalidate(alarmPermissionsProvider);
+          },
+          child: const Text('Allow'),
+        ),
+        TextButton(onPressed: onHelp, child: const Text('How to fix')),
+      ],
+    );
+  }
+}
+
+class _UpcomingList extends StatelessWidget {
+  const _UpcomingList({required this.lists, required this.onOpen});
+
+  final ReminderLists lists;
+  final void Function(Reminder) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    if (lists.upcoming.isEmpty) {
+      return const _Empty(icon: Icons.alarm, text: 'Nothing coming up');
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 88),
+      children: [
+        for (final u in lists.upcoming)
+          if (u.reminder != null)
+            _Tile(
+              reminder: u.reminder!,
+              subtitle: [
+                formatRing(u.when),
+                repeatSummary(u.reminder!.repeat, u.reminder!.at),
+                if (u.reminder!.transactionId != null) 'Linked entry',
+              ].join(' · '),
+              onTap: () => onOpen(u.reminder!),
+            )
+          else
+            _AutoTile(item: u),
+        const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Repeating reminders are scheduled about 30 rings ahead and '
+            'topped up each time you open the app. Payment due dates ring '
+            'automatically (switch them off on each entry).',
+            style: TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AutoTile extends StatelessWidget {
+  const _AutoTile({required this.item});
+
+  final UpcomingItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = item.auto!.payload;
+    return ListTile(
+      leading: const Icon(Icons.payments_outlined),
+      title: Text(p.title),
+      subtitle: Text('${formatRing(p.at)} · Automatic payment alarm'),
+      onTap: p.entryId == null
+          ? null
+          : () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => EntryDetailScreen(transactionId: p.entryId!),
+              ),
+            ),
+    );
+  }
+}
+
+class _CompletedList extends ConsumerWidget {
+  const _CompletedList({required this.items, required this.onOpen});
+
+  final List<Reminder> items;
+  final void Function(Reminder) onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (items.isEmpty) {
+      return const _Empty(
+        icon: Icons.check_circle_outline,
+        text: 'Finished reminders appear here',
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 88),
+      children: [
+        for (final r in items)
+          _Tile(
+            reminder: r,
+            icon: Icons.check_circle_outline,
+            subtitle: r.doneAt == null
+                ? 'Done'
+                : 'Done ${formatRing(r.doneAt!)}',
+            trailing: TextButton(
+              onPressed: () =>
+                  ref.read(reminderRepositoryProvider).reopen(r.id),
+              child: const Text('Reopen'),
+            ),
+            onTap: () => onOpen(r),
+          ),
+      ],
+    );
+  }
+}
+
+class _MissedList extends ConsumerWidget {
+  const _MissedList({required this.items, required this.onOpen});
+
+  final List<Reminder> items;
+  final void Function(Reminder) onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (items.isEmpty) {
+      return const _Empty(
+        icon: Icons.notifications_off_outlined,
+        text: 'No missed reminders',
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 88),
+      children: [
+        for (final r in items)
+          _Tile(
+            reminder: r,
+            icon: Icons.alarm_off,
+            iconColor: AppColors.pay(context),
+            subtitle: 'Was ${formatRing(r.at)} · tap to reschedule',
+            subtitleColor: AppColors.pay(context),
+            trailing: TextButton(
+              onPressed: () =>
+                  ref.read(reminderRepositoryProvider).markDone(r.id),
+              child: const Text('Mark done'),
+            ),
+            onTap: () => onOpen(r),
+          ),
+      ],
     );
   }
 }
@@ -118,44 +267,42 @@ class RemindersScreen extends ConsumerWidget {
 class _Tile extends StatelessWidget {
   const _Tile({
     required this.reminder,
-    required this.next,
+    required this.subtitle,
     required this.onTap,
+    this.icon = Icons.alarm,
+    this.iconColor,
+    this.subtitleColor,
+    this.trailing,
   });
 
   final Reminder reminder;
-  final DateTime? next;
+  final String subtitle;
   final VoidCallback onTap;
+  final IconData icon;
+  final Color? iconColor;
+  final Color? subtitleColor;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final r = reminder;
-    final passed = !r.done && next == null;
-    final when = r.done
-        ? 'Done'
-        : passed
-        ? 'Passed ${formatRing(r.at)}'
-        : formatRing(next!);
     return ListTile(
-      leading: Icon(
-        r.done ? Icons.check_circle_outline : Icons.alarm,
-        color: passed ? AppColors.pay(context) : null,
-      ),
-      title: Text(r.title),
+      leading: Icon(icon, color: iconColor),
+      title: Text(reminder.title),
       subtitle: Text(
-        [
-          when,
-          repeatSummary(r.repeat, r.at),
-          if (r.transactionId != null) 'Linked entry',
-        ].join(' · '),
-        style: passed ? TextStyle(color: AppColors.pay(context)) : null,
+        subtitle,
+        style: subtitleColor == null ? null : TextStyle(color: subtitleColor),
       ),
+      trailing: trailing,
       onTap: onTap,
     );
   }
 }
 
 class _Empty extends StatelessWidget {
-  const _Empty();
+  const _Empty({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -166,12 +313,12 @@ class _Empty extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.alarm,
+              icon,
               size: 64,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
-            const Text('No reminders yet', textAlign: TextAlign.center),
+            Text(text, textAlign: TextAlign.center),
           ],
         ),
       ),

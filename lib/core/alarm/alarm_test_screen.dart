@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../reminders/alarm_providers.dart';
-import '../models/reminder.dart';
-import 'alarm_plan.dart';
 import 'alarm_service.dart';
+import 'test_alarm.dart';
 
 /// Phase 0 alarm test, kept for checking alarms on other phones (Oppo, Vivo,
 /// Samsung, iPhone) until the real reminders arrive in Phase 2.
@@ -41,24 +40,7 @@ class _AlarmTestScreenState extends ConsumerState<AlarmTestScreen> {
   }
 
   Future<void> _schedule(Duration after) async {
-    final payload = AlarmPayload(
-      reminderId: 'alarm-test',
-      title: 'Alarm test',
-      notes: 'Developer alarm test',
-      snoozeMinutes: 5,
-      tone: ReminderTone.alarm,
-      vibration: ReminderVibration.long,
-      at: DateTime.now().add(after),
-      once: true,
-    );
-    await ref
-        .read(alarmGatewayProvider)
-        .schedule(
-          PlannedAlarm(
-            id: alarmId(reminderKey('alarm-test'), 0),
-            payload: payload,
-          ),
-        );
+    await scheduleTestAlarm(ref.read(alarmGatewayProvider), after);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Alarm set for ${after.inMinutes} min from now')),
@@ -110,9 +92,8 @@ class _AlarmTestScreenState extends ConsumerState<AlarmTestScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => ref
-                  .read(alarmGatewayProvider)
-                  .cancel(alarmId(reminderKey('alarm-test'), 0)),
+              onPressed: () =>
+                  ref.read(alarmGatewayProvider).cancel(testAlarmId()),
               child: const Text('Cancel all'),
             ),
           ],

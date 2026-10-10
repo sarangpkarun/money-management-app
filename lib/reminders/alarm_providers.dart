@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/alarm/alarm_gateway.dart';
 import '../core/alarm/alarm_scheduler.dart';
 import '../core/alarm/alarm_service.dart';
+import '../core/alarm/settings_opener.dart';
 import '../people/people_providers.dart';
 import 'reminder_providers.dart';
 
@@ -29,6 +30,11 @@ final alarmSyncProvider = Provider<void>((ref) {
   ref.listen(remindersProvider, (_, _) => run(), fireImmediately: true);
   ref.listen(allTransactionsProvider, (_, _) => run(), fireImmediately: true);
 });
+
+/// Opens system settings pages. Tests replace it with a fake.
+final settingsOpenerProvider = Provider<SettingsOpener>(
+  (ref) => const AppSettingsOpener(),
+);
 
 /// Whether notifications and exact alarms are allowed right now.
 final alarmPermissionsProvider = FutureProvider.autoDispose<AlarmPermissions>(
