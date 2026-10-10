@@ -1,3 +1,5 @@
+import '../core/ui/success_feedback.dart';
+import 'settle_logic.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -102,6 +104,18 @@ class _EmiPaymentSheetState extends ConsumerState<_EmiPaymentSheet> {
             mode: _mode,
             note: _note.text.trim().isEmpty ? null : _note.text.trim(),
           );
+      if (mounted) {
+        final settled = rowPaymentSettles(
+          widget.txn.emiPlan!,
+          widget.row,
+          amount,
+        );
+        showSuccess(
+          context,
+          settled ? 'Settled' : (_isEmi ? 'EMI paid' : 'Payment saved'),
+          big: settled,
+        );
+      }
       if (mounted) Navigator.of(context).pop();
     } on PaymentException {
       // The row changed elsewhere since this sheet opened.

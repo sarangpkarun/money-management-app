@@ -1,3 +1,5 @@
+import '../core/ui/success_feedback.dart';
+import 'settle_logic.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -128,6 +130,14 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
           widget.txn.id,
           Payment(amount: amount!, date: _date, mode: _mode, note: note),
         );
+        if (mounted) {
+          final settled = paymentSettles(amount: amount, available: _available);
+          showSuccess(
+            context,
+            settled ? 'Settled' : 'Payment saved',
+            big: settled,
+          );
+        }
       }
       if (mounted) Navigator.of(context).pop();
     } on PaymentException catch (e) {

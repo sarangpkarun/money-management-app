@@ -12,6 +12,7 @@ import 'package:money_manager/core/models/money_transaction.dart';
 import 'package:money_manager/core/models/payment.dart';
 import 'package:money_manager/core/models/person.dart';
 import 'package:money_manager/core/money/money.dart';
+import 'package:money_manager/core/theme/app_colors.dart';
 import 'package:money_manager/core/theme/app_theme.dart';
 import 'package:money_manager/home/home_screen.dart';
 
@@ -109,8 +110,11 @@ void main() {
         )
         .style!
         .color!;
-    expect(amountIn('Due tomorrow', '₹300'), const Color(0xFF16A34A));
-    expect(amountIn('Due today', '₹500'), const Color(0xFFDC2626));
+    expect(
+      amountIn('Due tomorrow', '₹300'),
+      AppColors.receiveFor(Brightness.light),
+    );
+    expect(amountIn('Due today', '₹500'), AppColors.payFor(Brightness.light));
   });
 
   testWidgets('an entry with no due date appears in no section', (

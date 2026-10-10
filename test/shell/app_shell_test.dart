@@ -273,6 +273,8 @@ void main() {
       await pumpShell(tester);
       expect(find.text('No entries yet'), findsOneWidget);
       expect(find.text('See all'), findsNothing);
+      await tester.ensureVisible(find.text('Add your first entry'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Add your first entry'));
       await tester.pumpAndSettle();
       expect(find.text('Add entry'), findsOneWidget);

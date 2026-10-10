@@ -1,3 +1,5 @@
+import '../core/ui/success_feedback.dart';
+import 'settle_logic.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -270,6 +272,14 @@ class _ExtraPaymentSheetState extends ConsumerState<_ExtraPaymentSheet> {
             mode: _mode,
             note: _note.text.trim().isEmpty ? null : _note.text.trim(),
           );
+      if (mounted) {
+        final settled = paymentSettles(amount: amount, available: widget.owed);
+        showSuccess(
+          context,
+          settled ? 'Settled' : 'Extra payment saved',
+          big: settled,
+        );
+      }
       if (mounted) Navigator.of(context).pop();
     } on InstalmentError catch (e) {
       if (mounted) {

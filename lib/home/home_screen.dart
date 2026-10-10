@@ -1,3 +1,4 @@
+import '../core/ui/empty_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -108,17 +109,16 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
               if (recent.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Column(
-                    children: [
-                      const Text('No entries yet'),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: () => _open(context, const AddEntryScreen()),
-                        child: const Text('Add your first entry'),
-                      ),
-                    ],
+                SizedBox(
+                  height: 320,
+                  child: EmptyState(
+                    icon: Icons.account_balance_wallet_outlined,
+                    title: 'No entries yet',
+                    hint:
+                        'Record money you lend or borrow, an EMI or an '
+                        'instalment plan, and it shows up here.',
+                    actionLabel: 'Add your first entry',
+                    onAction: () => _open(context, const AddEntryScreen()),
                   ),
                 )
               else
@@ -139,6 +139,10 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Secondary text on the net card's indigo gradient: white at 90% keeps it above
+/// 4.5:1 on both ends of the gradient.
+final _onCardMuted = Colors.white.withValues(alpha: 0.9);
 
 class _NetCard extends StatelessWidget {
   const _NetCard({required this.totals});
@@ -164,7 +168,7 @@ class _NetCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Net balance', style: TextStyle(color: Colors.white70)),
+          Text('Net balance', style: TextStyle(color: _onCardMuted)),
           const SizedBox(height: 4),
           Text(
             '${net.isNegative ? '-' : ''}${Money(net.paise.abs()).format()}',
@@ -174,7 +178,7 @@ class _NetCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          Text(caption, style: const TextStyle(color: Colors.white70)),
+          Text(caption, style: TextStyle(color: _onCardMuted)),
         ],
       ),
     );

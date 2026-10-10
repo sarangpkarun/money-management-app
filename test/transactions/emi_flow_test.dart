@@ -9,6 +9,7 @@ import 'package:money_manager/core/data/transaction_repository.dart';
 import 'package:money_manager/core/models/payment.dart';
 import 'package:money_manager/core/models/person.dart';
 import 'package:money_manager/core/money/money.dart';
+import 'package:money_manager/core/theme/app_colors.dart';
 import 'package:money_manager/transactions/add_emi_screen.dart';
 import 'package:money_manager/transactions/entry_detail_screen.dart';
 
@@ -76,10 +77,10 @@ void main() {
     return (c.decoration! as BoxDecoration).color!;
   }
 
-  const amber = Color(0xFFF59E0B);
-  const green = Color(0xFF16A34A);
-  const red = Color(0xFFDC2626);
-  const blue = Color(0xFF2563EB);
+  final amber = AppColors.pendingFor(Brightness.light);
+  final green = AppColors.receiveFor(Brightness.light);
+  final red = AppColors.payFor(Brightness.light);
+  final blue = AppColors.partialFor(Brightness.light);
 
   group('Add EMI purchase', () {
     testWidgets('asks for the terms before showing a preview', (tester) async {

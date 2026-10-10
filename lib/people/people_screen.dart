@@ -1,3 +1,4 @@
+import '../core/ui/empty_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -113,11 +114,10 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
               onChanged: (v) => setState(() => _query = v),
             ),
           ),
-          SizedBox(
-            height: 52,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
               children: [
                 for (final e in _filterLabels.entries)
                   Padding(
@@ -149,7 +149,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                   query: _query,
                 );
                 if (shown.isEmpty) {
-                  return const Center(child: Text('No matching people'));
+                  return const EmptyState(
+                    icon: Icons.search_off,
+                    title: 'No matching people',
+                    hint: 'Try a different name or number, or another filter.',
+                  );
                 }
                 return ListView.separated(
                   itemCount: shown.length,
@@ -187,32 +191,70 @@ class _PersonRow extends StatelessWidget {
       color = AppColors.receive(context);
       label = 'Owes you';
     }
-    return ListTile(
-      leading: InitialsAvatar(name: summary.person.name),
-      title: Text(summary.person.name),
-      subtitle: Text('Last activity ${formatShortDate(summary.lastActivity)}'),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!net.isZero)
-            Text(
-              Money(net.paise.abs()).format(),
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-          Text(label, style: TextStyle(color: color, fontSize: 12)),
-          if (summary.hasOverdue)
-            Text(
-              'Overdue',
-              style: TextStyle(color: AppColors.pay(context), fontSize: 11),
-            ),
-        ],
-      ),
+    // A plain row rather than a ListTile: the right-hand column is up to three
+    // lines and a ListTile clips it once the phone's text size is large.
+    return InkWell(
       onTap: () => onTap(summary),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 72),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              InitialsAvatar(name: summary.person.name),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      summary.person.name,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    Text(
+                      'Last activity ${formatShortDate(summary.lastActivity)}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (!net.isZero)
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          Money(net.paise.abs()).format(),
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    Text(label, style: TextStyle(color: color, fontSize: 12)),
+                    if (summary.hasOverdue)
+                      Text(
+                        'Overdue',
+                        style: TextStyle(
+                          color: AppColors.pay(context),
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -225,22 +267,14 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.people_outline, size: 64),
-          const SizedBox(height: 12),
-          const Text('No people yet'),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: onAdd, child: const Text('Add person')),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: onImport,
-            child: const Text('Import from contacts'),
-          ),
-        ],
-      ),
+    return EmptyState(
+      icon: Icons.people_outline,
+      title: 'No people yet',
+      hint: 'Add the people you lend to or borrow from.',
+      actionLabel: 'Add person',
+      onAction: onAdd,
+      secondaryLabel: 'Import from contacts',
+      onSecondary: onImport,
     );
   }
 }

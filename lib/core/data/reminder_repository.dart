@@ -34,6 +34,10 @@ class ReminderRepository {
 
   Future<void> delete(String id) => _paths.reminders.doc(id).delete();
 
+  /// Puts a deleted reminder back exactly as it was, under its old id (Undo).
+  Future<void> restore(Reminder reminder) =>
+      _paths.reminders.doc(reminder.id).set(reminder.toMap());
+
   Future<void> markDone(String id, {DateTime? at}) =>
       _paths.reminders.doc(id).update({
         'done': true,

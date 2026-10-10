@@ -4,6 +4,7 @@ import '../core/theme/app_colors.dart';
 import '../core/ui/format.dart';
 import '../core/ui/initials_avatar.dart';
 import '../transactions/entry_detail_screen.dart';
+import '../transactions/pay_swipe.dart';
 import 'due_items.dart';
 
 /// One payment on the dashboard: who, what, when, and how much (green when it
@@ -20,24 +21,28 @@ class DueRow extends StatelessWidget {
     final color = item.isReceivable
         ? AppColors.receive(context)
         : AppColors.pay(context);
-    return ListTile(
-      leading: InitialsAvatar(name: item.entry.personName),
-      title: Text('${item.entry.personName} · ${item.what}'),
-      subtitle: Text(
-        dueLabel(item, now, formatShortDate),
-        style: late ? TextStyle(color: AppColors.pay(context)) : null,
-      ),
-      trailing: Text(
-        item.amount.format(),
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w700,
-          fontSize: 16,
+    return withPaySwipe(
+      context,
+      item.entry,
+      ListTile(
+        leading: InitialsAvatar(name: item.entry.personName),
+        title: Text('${item.entry.personName} · ${item.what}'),
+        subtitle: Text(
+          dueLabel(item, now, formatShortDate),
+          style: late ? TextStyle(color: AppColors.pay(context)) : null,
         ),
-      ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => EntryDetailScreen(transactionId: item.entry.id),
+        trailing: Text(
+          item.amount.format(),
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => EntryDetailScreen(transactionId: item.entry.id),
+          ),
         ),
       ),
     );

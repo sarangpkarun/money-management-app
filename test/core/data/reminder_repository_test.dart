@@ -83,4 +83,20 @@ void main() {
     final doc = (await db.collection('users/u1/reminders').get()).docs.single;
     expect(doc.data()['at'], isA<Timestamp>());
   });
+
+  test(
+    'restore puts a deleted reminder back under its old id, unchanged',
+    () async {
+      final id = await repo.add(
+        rem('keep', DateTime(2030, 1, 1, 9), repeat: const RepeatRule.daily()),
+      );
+      final before = (await repo.getAll()).single;
+      await repo.delete(id);
+      expect(await repo.getAll(), isEmpty);
+      await repo.restore(before);
+      final after = (await repo.getAll()).single;
+      expect(after.id, id);
+      expect(after.toMap(), before.toMap());
+    },
+  );
 }

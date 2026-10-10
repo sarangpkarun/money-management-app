@@ -1,3 +1,4 @@
+import '../core/ui/success_feedback.dart';
 import '../core/ui/format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -231,6 +232,7 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
       await repo.reopen(r.id);
     } else {
       await repo.markDone(r.id);
+      if (mounted) showSuccess(context, 'Marked done');
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -330,6 +332,7 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
             const SizedBox(height: 16),
             DropdownButtonFormField<RepeatKind>(
               initialValue: _kind,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Repeat'),
               items: [
                 for (final e in _repeatLabels.entries)
@@ -374,6 +377,7 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
             const SizedBox(height: 16),
             DropdownButtonFormField<ReminderTone>(
               initialValue: _tone,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Tone'),
               items: [
                 for (final e in _toneLabels.entries)

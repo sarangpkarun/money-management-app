@@ -212,4 +212,62 @@ void main() {
       expect(find.text('Notifications'), findsOneWidget);
     });
   });
+
+  group('swipe', () {
+    Future<void> swipe(WidgetTester t, String title, double dx) async {
+      await t.drag(find.text(title), Offset(dx, 0));
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('right on Upcoming marks done; Undo reopens', (tester) async {
+      await repo.add(rem('Soon', DateTime(2099, 1, 1, 9)));
+      await pump(tester);
+      await swipe(tester, 'Soon', 500);
+      expect(await isDone('Soon'), isTrue);
+      expect(find.text('Undo'), findsOneWidget);
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+      expect(await isDone('Soon'), isFalse);
+    });
+
+    testWidgets('left on Upcoming deletes; Undo restores same reminder', (
+      tester,
+    ) async {
+      final id = await repo.add(rem('Soon', DateTime(2099, 1, 1, 9)));
+      await pump(tester);
+      await swipe(tester, 'Soon', -500);
+      expect(
+        await db.collection('users/u1/reminders').get().then((q) => q.docs),
+        isEmpty,
+      );
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+      final docs = (await db.collection('users/u1/reminders').get()).docs;
+      expect(docs.single.id, id);
+      expect(find.text('Soon'), findsOneWidget);
+    });
+
+    testWidgets('right on Completed reopens', (tester) async {
+      await repo.add(rem('Fin', DateTime(2099, 1, 1, 9), done: true));
+      await pump(tester);
+      await goTo(tester, 'Completed');
+      await swipe(tester, 'Fin', 500);
+      expect(await isDone('Fin'), isFalse);
+    });
+
+    testWidgets('right on Missed marks done', (tester) async {
+      await repo.add(rem('Old', DateTime(2020, 1, 1, 9)));
+      await pump(tester);
+      await goTo(tester, 'Missed (1)');
+      await swipe(tester, 'Old', 500);
+      expect(await isDone('Old'), isTrue);
+    });
+
+    testWidgets('a short drag changes nothing', (tester) async {
+      await repo.add(rem('Soon', DateTime(2099, 1, 1, 9)));
+      await pump(tester);
+      await swipe(tester, 'Soon', 30);
+      expect(await isDone('Soon'), isFalse);
+    });
+  });
 }

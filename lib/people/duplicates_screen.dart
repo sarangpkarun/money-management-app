@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/data/people_repository.dart';
 import '../core/data/providers.dart';
 import '../core/models/person.dart';
+import '../core/ui/empty_state.dart';
 import 'duplicates.dart';
 import 'people_providers.dart';
 
@@ -27,7 +28,11 @@ class DuplicatesScreen extends ConsumerWidget {
         data: (list) {
           final groups = findDuplicateGroups(list);
           if (groups.isEmpty) {
-            return const Center(child: Text('No duplicates found'));
+            return const EmptyState(
+              icon: Icons.check_circle_outline,
+              title: 'No duplicates found',
+              hint: 'Nobody shares a phone number or a name.',
+            );
           }
           return ListView(
             padding: const EdgeInsets.all(16),

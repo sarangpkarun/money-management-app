@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/alarm/settings_opener.dart';
 import '../core/data/providers.dart';
 import '../core/models/person.dart';
+import '../core/ui/empty_state.dart';
 import '../reminders/alarm_providers.dart';
 import 'contact_import.dart';
 import 'contacts_providers.dart';
@@ -208,7 +209,11 @@ class _ContactImportScreenState extends ConsumerState<ContactImportScreen> {
 
   Widget _list(BuildContext context) {
     if (_candidates.isEmpty) {
-      return const Center(child: Text('No contacts found on this phone'));
+      return const EmptyState(
+        icon: Icons.contacts_outlined,
+        title: 'No contacts found on this phone',
+        hint: 'You can still add people one by one.',
+      );
     }
     final visible = _visible;
     return Column(
@@ -232,7 +237,10 @@ class _ContactImportScreenState extends ConsumerState<ContactImportScreen> {
         ),
         Expanded(
           child: visible.isEmpty
-              ? const Center(child: Text('No matching contacts'))
+              ? const EmptyState(
+                  icon: Icons.search_off,
+                  title: 'No matching contacts',
+                )
               : ListView.builder(
                   itemCount: visible.length,
                   itemBuilder: (_, row) {

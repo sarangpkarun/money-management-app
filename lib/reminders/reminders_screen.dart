@@ -1,8 +1,11 @@
+import '../core/ui/success_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/data/providers.dart';
 import '../core/models/reminder.dart';
+import '../core/ui/empty_state.dart';
+import '../core/ui/swipe_actions.dart';
 import '../core/theme/app_colors.dart';
 import '../settings/alarm_permission_help_screen.dart';
 import '../transactions/entry_detail_screen.dart';
@@ -129,16 +132,22 @@ class _PermissionBanner extends ConsumerWidget {
   }
 }
 
-class _UpcomingList extends StatelessWidget {
+class _UpcomingList extends ConsumerWidget {
   const _UpcomingList({required this.lists, required this.onOpen});
 
   final ReminderLists lists;
   final void Function(Reminder) onOpen;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (lists.upcoming.isEmpty) {
-      return const _Empty(icon: Icons.alarm, text: 'Nothing coming up');
+      return const EmptyState(
+        icon: Icons.alarm,
+        title: 'Nothing coming up',
+        hint:
+            'Reminders you add, and the due dates of your entries, show here. '
+            'Tap Add reminder to make one.',
+      );
     }
     return ListView(
       padding: const EdgeInsets.only(bottom: 88),
@@ -153,6 +162,8 @@ class _UpcomingList extends StatelessWidget {
                 if (u.reminder!.transactionId != null) 'Linked entry',
               ].join(' · '),
               onTap: () => onOpen(u.reminder!),
+              right: _doneSwipe(context, ref, u.reminder!),
+              left: _deleteSwipe(context, ref, u.reminder!),
             )
           else
             _AutoTile(item: u),
@@ -202,9 +213,10 @@ class _CompletedList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) {
-      return const _Empty(
+      return const EmptyState(
         icon: Icons.check_circle_outline,
-        text: 'Finished reminders appear here',
+        title: 'Finished reminders appear here',
+        hint: 'Mark a reminder done and it moves to this list.',
       );
     }
     return ListView(
@@ -223,6 +235,8 @@ class _CompletedList extends ConsumerWidget {
               child: const Text('Reopen'),
             ),
             onTap: () => onOpen(r),
+            right: _reopenSwipe(context, ref, r),
+            left: _deleteSwipe(context, ref, r),
           ),
       ],
     );
@@ -238,9 +252,10 @@ class _MissedList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) {
-      return const _Empty(
+      return const EmptyState(
         icon: Icons.notifications_off_outlined,
-        text: 'No missed reminders',
+        title: 'No missed reminders',
+        hint: 'One-off reminders you did not mark done show here.',
       );
     }
     return ListView(
@@ -254,11 +269,15 @@ class _MissedList extends ConsumerWidget {
             subtitle: 'Was ${formatRing(r.at)} · tap to reschedule',
             subtitleColor: AppColors.pay(context),
             trailing: TextButton(
-              onPressed: () =>
-                  ref.read(reminderRepositoryProvider).markDone(r.id),
+              onPressed: () {
+                ref.read(reminderRepositoryProvider).markDone(r.id);
+                showSuccess(context, 'Marked done');
+              },
               child: const Text('Mark done'),
             ),
             onTap: () => onOpen(r),
+            right: _doneSwipe(context, ref, r),
+            left: _deleteSwipe(context, ref, r),
           ),
       ],
     );
@@ -274,8 +293,12 @@ class _Tile extends StatelessWidget {
     this.iconColor,
     this.subtitleColor,
     this.trailing,
+    this.right,
+    this.left,
   });
 
+  final SwipeAction? right;
+  final SwipeAction? left;
   final Reminder reminder;
   final String subtitle;
   final VoidCallback onTap;
@@ -286,7 +309,7 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
+    final tile = ListTile(
       leading: Icon(icon, color: iconColor),
       title: Text(reminder.title),
       subtitle: Text(
@@ -296,33 +319,72 @@ class _Tile extends StatelessWidget {
       trailing: trailing,
       onTap: onTap,
     );
+    if (right == null && left == null) return tile;
+    return SwipeActions(
+      key: ValueKey('swipe-${reminder.id}'),
+      right: right,
+      left: left,
+      child: tile,
+    );
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 64,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+SwipeAction _doneSwipe(BuildContext context, WidgetRef ref, Reminder r) {
+  final repo = ref.read(reminderRepositoryProvider);
+  final messenger = ScaffoldMessenger.of(context);
+  return SwipeAction(
+    label: 'Mark done',
+    icon: Icons.check,
+    color: AppColors.receive(context),
+    onTrigger: () async {
+      await repo.markDone(r.id);
+      if (!context.mounted) return;
+      showSuccess(context, 'Marked done');
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: const Text('Marked done'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () => repo.reopen(r.id),
             ),
-            const SizedBox(height: 16),
-            Text(text, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
+        );
+    },
+  );
+}
+
+SwipeAction _reopenSwipe(BuildContext context, WidgetRef ref, Reminder r) {
+  final repo = ref.read(reminderRepositoryProvider);
+  return SwipeAction(
+    label: 'Reopen',
+    icon: Icons.replay,
+    color: AppColors.partial(context),
+    onTrigger: () => repo.reopen(r.id),
+  );
+}
+
+SwipeAction _deleteSwipe(BuildContext context, WidgetRef ref, Reminder r) {
+  final repo = ref.read(reminderRepositoryProvider);
+  final messenger = ScaffoldMessenger.of(context);
+  return SwipeAction(
+    label: 'Delete',
+    icon: Icons.delete_outline,
+    color: AppColors.pay(context),
+    onTrigger: () async {
+      await repo.delete(r.id);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${r.title}"'),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () => repo.restore(r),
+            ),
+          ),
+        );
+    },
+  );
 }

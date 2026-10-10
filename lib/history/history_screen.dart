@@ -1,3 +1,4 @@
+import '../core/ui/empty_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -113,11 +114,19 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   (t) => t.status == TransactionStatus.paid,
                 );
                 if (!anySettled) {
-                  return const Center(child: Text('No settled entries yet'));
+                  return const EmptyState(
+                    icon: Icons.history,
+                    title: 'No settled entries yet',
+                    hint: 'Entries move here once they are fully paid.',
+                  );
                 }
                 final shown = applyHistoryFilter(all, _filter);
                 if (shown.isEmpty) {
-                  return const Center(child: Text('No matching entries'));
+                  return const EmptyState(
+                    icon: Icons.search_off,
+                    title: 'No matching entries',
+                    hint: 'Try different filters or search words.',
+                  );
                 }
                 return ListView.separated(
                   itemCount: shown.length,
