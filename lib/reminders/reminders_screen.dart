@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models/reminder.dart';
 import '../core/reminders/repeat.dart';
 import '../core/theme/app_colors.dart';
+import 'alarm_providers.dart';
 import 'reminder_form_logic.dart';
 import 'reminder_form_screen.dart';
 import 'reminder_providers.dart';
@@ -34,6 +35,7 @@ class RemindersScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Could not load reminders: $e')),
         data: (all) {
           if (all.isEmpty) return const _Empty();
+          final perms = ref.watch(alarmPermissionsProvider).value;
           final active = [
             for (final r in all)
               if (!r.done) r,
@@ -55,6 +57,24 @@ class RemindersScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.only(bottom: 88),
             children: [
+              if (perms != null && !perms.ok)
+                MaterialBanner(
+                  content: const Text(
+                    'Alarms are off. Allow notifications and exact alarms so '
+                    'reminders can ring.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () async {
+                        await ref
+                            .read(alarmSchedulerProvider)
+                            .ensurePermissions();
+                        ref.invalidate(alarmPermissionsProvider);
+                      },
+                      child: const Text('Allow'),
+                    ),
+                  ],
+                ),
               if (active.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(24),
@@ -81,7 +101,8 @@ class RemindersScreen extends ConsumerWidget {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
-                  'Alarm scheduling arrives with the alarm service.',
+                  'Repeating reminders are scheduled about 30 rings ahead and '
+                  'topped up each time you open the app.',
                   style: TextStyle(fontSize: 12),
                 ),
               ),

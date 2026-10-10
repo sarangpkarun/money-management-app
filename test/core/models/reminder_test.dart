@@ -14,7 +14,6 @@ void main() {
     expect(r.snoozeMinutes, 10);
     expect(r.tone, ReminderTone.alarm);
     expect(r.vibration, ReminderVibration.long);
-    expect(r.volume, ReminderVolume.high);
     expect(r.repeat.kind, RepeatKind.none);
     expect(r.done, isFalse);
   });
@@ -28,7 +27,6 @@ void main() {
       snoozeMinutes: 15,
       tone: ReminderTone.ringtone,
       vibration: ReminderVibration.short,
-      volume: ReminderVolume.low,
       transactionId: 't1',
       done: true,
       doneAt: DateTime(2030, 1, 8),
@@ -43,7 +41,6 @@ void main() {
     expect(back.snoozeMinutes, 15);
     expect(back.tone, ReminderTone.ringtone);
     expect(back.vibration, ReminderVibration.short);
-    expect(back.volume, ReminderVolume.low);
     expect(back.transactionId, 't1');
     expect(back.done, isTrue);
     expect(back.doneAt, DateTime(2030, 1, 8));
@@ -105,5 +102,16 @@ void main() {
     expect(c.doneAt, isNull);
     expect(c.done, isFalse);
     expect(r.toMap()['at'], isA<Timestamp>());
+  });
+
+  test('an old document that still has a volume field loads fine', () {
+    final m = Reminder(
+      title: 'x',
+      at: DateTime(2030),
+      createdAt: created,
+    ).toMap()..['volume'] = 'low';
+    final r = Reminder.fromMap('i', m);
+    expect(r.title, 'x');
+    expect(r.toMap().containsKey('volume'), isFalse);
   });
 }

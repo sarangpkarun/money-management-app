@@ -9,16 +9,21 @@ import 'package:money_manager/core/data/transaction_repository.dart';
 import 'package:money_manager/core/models/person.dart';
 import 'package:money_manager/core/models/reminder.dart';
 import 'package:money_manager/core/money/money.dart';
+import 'package:money_manager/reminders/alarm_providers.dart';
 import 'package:money_manager/reminders/reminders_screen.dart';
+
+import '../support/fake_alarm_gateway.dart';
 
 void main() {
   late FakeFirebaseFirestore db;
+  late FakeAlarmGateway gateway;
   late ReminderRepository repo;
   late PeopleRepository people;
   late TransactionRepository txns;
 
   setUp(() {
     db = FakeFirebaseFirestore();
+    gateway = FakeAlarmGateway();
     repo = ReminderRepository(db, 'u1');
     people = PeopleRepository(db, 'u1');
     txns = TransactionRepository(db, 'u1');
@@ -28,6 +33,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          alarmGatewayProvider.overrideWithValue(gateway),
           reminderRepositoryProvider.overrideWithValue(repo),
           peopleRepositoryProvider.overrideWithValue(people),
           transactionRepositoryProvider.overrideWithValue(txns),
@@ -147,17 +153,15 @@ void main() {
       expect(r['snoozeMinutes'], 10);
       expect(r['tone'], 'alarm');
       expect(r['vibration'], 'long');
-      expect(r['volume'], 'high');
       expect((r['repeat'] as Map)['kind'], 'none');
       expect(find.text('Pay Ravi'), findsOneWidget); // back on the list
     });
 
-    testWidgets('snooze, tone, vibration and volume are saved', (tester) async {
+    testWidgets('snooze, tone and vibration are saved', (tester) async {
       await openAdd(tester);
       await tester.enterText(field('Title'), 'Loud');
       await tapVisible(tester, find.text('15 min'));
       await tapVisible(tester, find.text('Short'));
-      await tapVisible(tester, find.text('Low'));
       await tapVisible(tester, find.text('Alarm sound'));
       await tester.tap(find.text('Ringtone').last);
       await tester.pumpAndSettle();
@@ -165,7 +169,6 @@ void main() {
       final r = (await stored()).single;
       expect(r['snoozeMinutes'], 15);
       expect(r['vibration'], 'short');
-      expect(r['volume'], 'low');
       expect(r['tone'], 'ringtone');
     });
 
@@ -324,6 +327,48 @@ void main() {
       await tester.pumpAndSettle();
       expect(await stored(), isEmpty);
       expect(find.text('No reminders yet'), findsOneWidget);
+    });
+  });
+
+  group('alarm permissions', () {
+    testWidgets('saving asks for permission when alarms are off', (
+      tester,
+    ) async {
+      gateway.allowed = false;
+      await openAdd(tester);
+      await tester.enterText(field('Title'), 'Pay');
+      await save(tester);
+      expect(gateway.permissionRequests, 1);
+      expect(await stored(), hasLength(1)); // saved regardless
+    });
+
+    testWidgets('saving does not ask when alarms are already allowed', (
+      tester,
+    ) async {
+      await openAdd(tester);
+      await tester.enterText(field('Title'), 'Pay');
+      await save(tester);
+      expect(gateway.permissionRequests, 0);
+    });
+
+    testWidgets('a banner offers to allow alarms, then goes away', (
+      tester,
+    ) async {
+      gateway.allowed = false;
+      await repo.add(rem('Active', DateTime(2099, 1, 1, 9)));
+      await pump(tester);
+      expect(find.textContaining('Alarms are off'), findsOneWidget);
+      gateway.allowed = true; // the user grants it in the system dialog
+      await tester.tap(find.text('Allow'));
+      await tester.pumpAndSettle();
+      expect(gateway.permissionRequests, 0); // asked only while still denied
+      expect(find.textContaining('Alarms are off'), findsNothing);
+    });
+
+    testWidgets('no banner when alarms work', (tester) async {
+      await repo.add(rem('Active', DateTime(2099, 1, 1, 9)));
+      await pump(tester);
+      expect(find.textContaining('Alarms are off'), findsNothing);
     });
   });
 }

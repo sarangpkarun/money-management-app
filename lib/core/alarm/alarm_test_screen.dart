@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../reminders/alarm_providers.dart';
+import '../models/reminder.dart';
+import 'alarm_plan.dart';
 import 'alarm_service.dart';
 
 /// Phase 0 alarm test, kept for checking alarms on other phones (Oppo, Vivo,
 /// Samsung, iPhone) until the real reminders arrive in Phase 2.
-class AlarmTestScreen extends StatefulWidget {
+class AlarmTestScreen extends ConsumerStatefulWidget {
   const AlarmTestScreen({super.key});
 
   @override
-  State<AlarmTestScreen> createState() => _AlarmTestScreenState();
+  ConsumerState<AlarmTestScreen> createState() => _AlarmTestScreenState();
 }
 
-class _AlarmTestScreenState extends State<AlarmTestScreen> {
+class _AlarmTestScreenState extends ConsumerState<AlarmTestScreen> {
   String _status = 'Initialising...';
 
   @override
@@ -26,12 +31,34 @@ class _AlarmTestScreenState extends State<AlarmTestScreen> {
   }
 
   Future<void> _refresh() async {
-    final s = await AlarmService.status();
-    if (mounted) setState(() => _status = s.toString());
+    final s = await ref.read(alarmGatewayProvider).permissions();
+    if (mounted) {
+      setState(
+        () => _status =
+            'notifications ${s.notifications}, exact alarms ${s.exact}',
+      );
+    }
   }
 
   Future<void> _schedule(Duration after) async {
-    await AlarmService.schedule(id: 1, after: after);
+    final payload = AlarmPayload(
+      reminderId: 'alarm-test',
+      title: 'Alarm test',
+      notes: 'Developer alarm test',
+      snoozeMinutes: 5,
+      tone: ReminderTone.alarm,
+      vibration: ReminderVibration.long,
+      at: DateTime.now().add(after),
+      once: true,
+    );
+    await ref
+        .read(alarmGatewayProvider)
+        .schedule(
+          PlannedAlarm(
+            id: alarmId(reminderKey('alarm-test'), 0),
+            payload: payload,
+          ),
+        );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Alarm set for ${after.inMinutes} min from now')),
@@ -51,7 +78,7 @@ class _AlarmTestScreenState extends State<AlarmTestScreen> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () async {
-                await AlarmService.requestPermissions();
+                await ref.read(alarmGatewayProvider).requestPermissions();
                 await _refresh();
               },
               child: const Text('Request permissions'),
@@ -68,7 +95,9 @@ class _AlarmTestScreenState extends State<AlarmTestScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: AlarmService.cancelAll,
+              onPressed: () => ref
+                  .read(alarmGatewayProvider)
+                  .cancel(alarmId(reminderKey('alarm-test'), 0)),
               child: const Text('Cancel all'),
             ),
           ],

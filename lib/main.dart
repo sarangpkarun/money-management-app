@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth/auth_gate.dart';
+import 'core/alarm/alarm_plan.dart';
 import 'core/alarm/alarm_screen.dart';
 import 'core/alarm/alarm_service.dart';
 import 'core/data/firestore_setup.dart';
@@ -37,14 +38,14 @@ class _MoneyManagerAppState extends State<MoneyManagerApp> {
     AlarmService.onAlarmOpened = _showAlarm;
     await AlarmService.init();
     final launched = AlarmService.launchedBy;
-    if (launched != null) _showAlarm(launched.id, launched.title);
+    if (launched != null) _showAlarm(launched.id, launched.payload);
   }
 
-  void _showAlarm(int id, String? title) {
+  void _showAlarm(int id, AlarmPayload payload) {
     navigatorKey.currentState?.push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => AlarmScreen(id: id, title: title ?? 'Alarm'),
+        builder: (_) => AlarmScreen(id: id, payload: payload),
       ),
     );
   }

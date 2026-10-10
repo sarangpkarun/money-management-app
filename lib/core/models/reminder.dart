@@ -68,8 +68,6 @@ enum ReminderTone { alarm, notification, ringtone }
 
 enum ReminderVibration { off, short, long }
 
-enum ReminderVolume { low, medium, high }
-
 const snoozeChoices = [5, 10, 15];
 
 T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
@@ -89,7 +87,6 @@ class Reminder {
     this.snoozeMinutes = 10,
     this.tone = ReminderTone.alarm,
     this.vibration = ReminderVibration.long,
-    this.volume = ReminderVolume.high,
     this.transactionId,
     this.done = false,
     this.doneAt,
@@ -106,7 +103,6 @@ class Reminder {
   final int snoozeMinutes;
   final ReminderTone tone;
   final ReminderVibration vibration;
-  final ReminderVolume volume;
 
   /// The entry this reminder is about, if any.
   final String? transactionId;
@@ -122,7 +118,6 @@ class Reminder {
     int? snoozeMinutes,
     ReminderTone? tone,
     ReminderVibration? vibration,
-    ReminderVolume? volume,
     String? transactionId,
     bool clearTransaction = false,
     bool? done,
@@ -137,7 +132,6 @@ class Reminder {
     snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
     tone: tone ?? this.tone,
     vibration: vibration ?? this.vibration,
-    volume: volume ?? this.volume,
     transactionId: clearTransaction
         ? null
         : (transactionId ?? this.transactionId),
@@ -154,7 +148,6 @@ class Reminder {
     'snoozeMinutes': snoozeMinutes,
     'tone': tone.name,
     'vibration': vibration.name,
-    'volume': volume.name,
     'transactionId': transactionId,
     'done': done,
     'doneAt': doneAt == null ? null : Timestamp.fromDate(doneAt!),
@@ -180,7 +173,6 @@ class Reminder {
       m['vibration'],
       ReminderVibration.long,
     ),
-    volume: _byName(ReminderVolume.values, m['volume'], ReminderVolume.high),
     transactionId: m['transactionId'] as String?,
     done: (m['done'] as bool?) ?? false,
     doneAt: m['doneAt'] == null ? null : (m['doneAt'] as Timestamp).toDate(),

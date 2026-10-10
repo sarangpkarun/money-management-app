@@ -8,6 +8,7 @@ import 'package:money_manager/auth/auth_repository.dart';
 import 'package:money_manager/core/data/payment_repository.dart';
 import 'package:money_manager/core/data/people_repository.dart';
 import 'package:money_manager/core/data/providers.dart';
+import 'package:money_manager/core/models/reminder.dart';
 import 'package:money_manager/core/data/reminder_repository.dart';
 import 'package:money_manager/core/data/transaction_repository.dart';
 import 'package:money_manager/core/data/user_repository.dart';
@@ -16,15 +17,20 @@ import 'package:money_manager/core/models/money_transaction.dart';
 import 'package:money_manager/core/models/person.dart';
 import 'package:money_manager/core/money/money.dart';
 import 'package:money_manager/core/theme/app_theme.dart';
+import 'package:money_manager/reminders/alarm_providers.dart';
 import 'package:money_manager/shell/app_shell.dart';
+
+import '../support/fake_alarm_gateway.dart';
 
 void main() {
   late FakeFirebaseFirestore db;
   late MockFirebaseAuth auth;
   late PeopleRepository people;
   late TransactionRepository txns;
+  late FakeAlarmGateway gateway;
 
   setUp(() async {
+    gateway = FakeAlarmGateway();
     db = FakeFirebaseFirestore();
     auth = MockFirebaseAuth(
       signedIn: true,
@@ -44,6 +50,7 @@ void main() {
       ProviderScope(
         overrides: [
           peopleRepositoryProvider.overrideWithValue(people),
+          alarmGatewayProvider.overrideWithValue(gateway),
           reminderRepositoryProvider.overrideWithValue(
             ReminderRepository(db, 'u1'),
           ),
@@ -326,6 +333,27 @@ void main() {
       expect(auth.currentUser, isNotNull);
     });
 
+    testWidgets('logging out removes this account\'s alarms from the phone', (
+      tester,
+    ) async {
+      await ReminderRepository(db, 'u1').add(
+        Reminder(
+          title: 'Rent',
+          at: DateTime.now().add(const Duration(days: 1)),
+          createdAt: DateTime.now(),
+        ),
+      );
+      await openSettings(tester);
+      expect(gateway.scheduled, isNotEmpty);
+      gateway.foreign[9] = 'not ours';
+      await tester.tap(find.text('Log out'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Log out'));
+      await tester.pumpAndSettle();
+      expect(gateway.scheduled, isEmpty);
+      expect(gateway.foreign.keys, [9]);
+    });
+
     testWidgets('confirming Log out signs you out', (tester) async {
       await openSettings(tester);
       await tester.tap(find.text('Log out'));
@@ -333,6 +361,48 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, 'Log out'));
       await tester.pumpAndSettle();
       expect(auth.currentUser, isNull);
+    });
+  });
+
+  group('alarms', () {
+    testWidgets('a reminder in the database is scheduled when the app opens', (
+      tester,
+    ) async {
+      await ReminderRepository(db, 'u1').add(
+        Reminder(
+          title: 'Pay rent',
+          at: DateTime.now().add(const Duration(days: 1)),
+          createdAt: DateTime.now(),
+        ),
+      );
+      await pumpShell(tester);
+      expect(gateway.scheduled.length, 1);
+      expect(gateway.scheduled.values.single.payload.title, 'Pay rent');
+    });
+
+    testWidgets('adding, editing and deleting reminders keeps alarms in step', (
+      tester,
+    ) async {
+      await pumpShell(tester);
+      expect(gateway.scheduled, isEmpty);
+      final repo = ReminderRepository(db, 'u1');
+      final id = await repo.add(
+        Reminder(
+          title: 'One',
+          at: DateTime.now().add(const Duration(days: 1)),
+          createdAt: DateTime.now(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(gateway.scheduled.length, 1);
+      await db.collection('users/u1/reminders').doc(id).update({
+        'title': 'Renamed',
+      });
+      await tester.pumpAndSettle();
+      expect(gateway.scheduled.values.single.payload.title, 'Renamed');
+      await repo.delete(id);
+      await tester.pumpAndSettle();
+      expect(gateway.scheduled, isEmpty);
     });
   });
 

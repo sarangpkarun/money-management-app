@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_providers.dart';
 import '../core/alarm/alarm_test_screen.dart';
 import '../history/history_screen.dart';
+import '../reminders/alarm_providers.dart';
 import '../transactions/entries_screen.dart';
 import 'profile_screen.dart';
 
@@ -34,6 +35,12 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (confirmed == true) {
       // The auth gate shows the login screen as soon as the user is gone.
+      // Alarms belong to the account: remove them from this phone first.
+      try {
+        await ref.read(alarmSchedulerProvider).clear();
+      } catch (_) {
+        // Alarms are best-effort; never block logging out.
+      }
       await ref.read(authRepositoryProvider).signOut();
     }
   }

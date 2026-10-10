@@ -1,71 +1,42 @@
-// SPIKE (Phase 0): proves exact, full-screen alarms on Android. The production
-// reminder service in Phase 2 replaces this.
 import 'dart:typed_data';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-// Channel sound/vibration are immutable once created, so bump the id on change.
-const _channelId = 'alarm_spike_v2';
-const _alarmSound = UriAndroidNotificationSound(
-  'content://settings/system/alarm_alert',
-);
+import 'alarm_channels.dart';
+import 'alarm_gateway.dart';
+import 'alarm_plan.dart';
+
 const _insistentFlag =
-    4; // Notification.FLAG_INSISTENT: loop sound until dismissed
-const alarmPayload = 'alarm';
+    4; // Notification.FLAG_INSISTENT: loop the sound until dismissed
 const _snoozeActionId = 'snooze';
 const _dismissActionId = 'dismiss';
 
 final _plugin = FlutterLocalNotificationsPlugin();
 
-NotificationDetails _details() => NotificationDetails(
-  android: AndroidNotificationDetails(
-    _channelId,
-    'Alarms',
-    channelDescription: 'Reminder alarms',
-    importance: Importance.max,
-    priority: Priority.max,
-    category: AndroidNotificationCategory.alarm,
-    fullScreenIntent: true,
-    audioAttributesUsage: AudioAttributesUsage.alarm,
-    sound: _alarmSound,
-    playSound: true,
-    enableVibration: true,
-    additionalFlags: Int32List.fromList([_insistentFlag]),
-    ongoing: true,
-    autoCancel: false,
-    actions: const [
-      AndroidNotificationAction(_snoozeActionId, 'Snooze 5 min'),
-      AndroidNotificationAction(
-        _dismissActionId,
-        'Dismiss',
-        cancelNotification: true,
-      ),
-    ],
-  ),
-);
-
+/// Handles notification actions while the app is not running (runs in its own
+/// isolate): Snooze re-schedules the same alarm after the reminder's minutes.
 @pragma('vm:entry-point')
 void alarmBackgroundResponse(NotificationResponse response) async {
-  if (response.actionId == _snoozeActionId && response.id != null) {
-    await AlarmService.init();
-    await AlarmService.schedule(
-      id: response.id!,
-      after: const Duration(minutes: 5),
-      title: 'Alarm (snoozed)',
-    );
-  }
+  if (response.actionId != _snoozeActionId) return;
+  final payload = AlarmPayload.decode(response.payload);
+  if (payload == null) return;
+  await AlarmService.init();
+  if (response.id != null) await _plugin.cancel(id: response.id!);
+  await PluginAlarmGateway().schedule(snoozeAlarm(payload, DateTime.now()));
 }
 
-/// Fired (in the UI isolate) when an alarm notification or its full-screen
-/// intent opens the app. Set by the app shell to show the ring screen.
-typedef AlarmOpened = void Function(int id, String? title);
+/// Fired in the UI isolate when an alarm notification or its full-screen intent
+/// opens the app. Set by the app shell to show the ring screen.
+typedef AlarmOpened = void Function(int id, AlarmPayload payload);
 
+/// Plugin set-up and the alarm that opened the app. The scheduling itself is in
+/// [PluginAlarmGateway].
 class AlarmService {
   static bool _ready = false;
   static AlarmOpened? onAlarmOpened;
-  static ({int id, String? title})? launchedBy;
+  static ({int id, AlarmPayload payload})? launchedBy;
 
   static Future<void> init() async {
     if (_ready) return;
@@ -75,86 +46,140 @@ class AlarmService {
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
       onDidReceiveNotificationResponse: (r) {
-        if (r.actionId == null && r.payload == alarmPayload && r.id != null) {
-          onAlarmOpened?.call(r.id!, null);
+        final payload = AlarmPayload.decode(r.payload);
+        if (r.actionId == null && payload != null && r.id != null) {
+          onAlarmOpened?.call(r.id!, payload);
         } else {
           alarmBackgroundResponse(r);
         }
       },
       onDidReceiveBackgroundNotificationResponse: alarmBackgroundResponse,
     );
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await android?.createNotificationChannel(
-      const AndroidNotificationChannel(
-        _channelId,
-        'Alarms',
-        description: 'Reminder alarms',
-        importance: Importance.max,
-        audioAttributesUsage: AudioAttributesUsage.alarm,
-        sound: _alarmSound,
-        playSound: true,
-        enableVibration: true,
-      ),
-    );
     final launch = await _plugin.getNotificationAppLaunchDetails();
     final r = launch?.notificationResponse;
+    final payload = AlarmPayload.decode(r?.payload);
     if (launch?.didNotificationLaunchApp == true &&
-        r?.payload == alarmPayload &&
+        payload != null &&
         r?.id != null) {
-      launchedBy = (id: r!.id!, title: null);
+      launchedBy = (id: r!.id!, payload: payload);
     }
     _ready = true;
   }
+}
 
-  /// Requests notification, exact-alarm and full-screen-intent access.
-  static Future<Map<String, bool?>> requestPermissions() async {
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()!;
-    final notifications = await android.requestNotificationsPermission();
-    final exact = await android.requestExactAlarmsPermission();
-    final fullScreen = await android.requestFullScreenIntentPermission();
-    return {
-      'notifications': notifications,
-      'exactAlarms': exact,
-      'fullScreenIntent': fullScreen,
-    };
-  }
+/// The phone's alarm system, through flutter_local_notifications.
+class PluginAlarmGateway implements AlarmGateway {
+  static final Set<String> _madeChannels = {};
 
-  static Future<Map<String, bool?>> status() async {
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()!;
-    return {
-      'notifications': await android.areNotificationsEnabled(),
-      'exactAlarms': await android.canScheduleExactNotifications(),
-    };
-  }
+  AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
 
-  static Future<void> schedule({
-    required int id,
-    required Duration after,
-    String title = 'Alarm',
-    String body = 'Spike alarm is ringing',
-  }) {
-    final when = tz.TZDateTime.now(tz.UTC).add(after);
-    return _plugin.zonedSchedule(
-      id: id,
-      scheduledDate: when,
-      notificationDetails: _details(),
-      androidScheduleMode: AndroidScheduleMode.alarmClock,
-      title: title,
-      body: body,
-      payload: alarmPayload,
+  Future<void> _ensureChannel(AlarmChannelSpec spec) async {
+    if (!_madeChannels.add(spec.id)) return;
+    await _android?.createNotificationChannel(
+      AndroidNotificationChannel(
+        spec.id,
+        spec.name,
+        description: 'Reminder alarms',
+        importance: Importance.max,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+        sound: UriAndroidNotificationSound(spec.soundUri),
+        playSound: true,
+        enableVibration: spec.vibrates,
+        vibrationPattern: spec.vibrates
+            ? Int64List.fromList(spec.vibrationPattern!)
+            : null,
+      ),
     );
   }
 
-  static Future<void> stop(int id) => _plugin.cancel(id: id);
+  @override
+  Future<void> schedule(PlannedAlarm alarm) async {
+    await AlarmService.init();
+    final p = alarm.payload;
+    final spec = alarmChannelFor(p.tone, p.vibration);
+    await _ensureChannel(spec);
+    await _plugin.zonedSchedule(
+      id: alarm.id,
+      scheduledDate: tz.TZDateTime.from(alarm.at, tz.UTC),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          spec.id,
+          spec.name,
+          channelDescription: 'Reminder alarms',
+          importance: Importance.max,
+          priority: Priority.max,
+          category: AndroidNotificationCategory.alarm,
+          fullScreenIntent: true,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
+          sound: UriAndroidNotificationSound(spec.soundUri),
+          playSound: true,
+          enableVibration: spec.vibrates,
+          vibrationPattern: spec.vibrates
+              ? Int64List.fromList(spec.vibrationPattern!)
+              : null,
+          additionalFlags: Int32List.fromList([_insistentFlag]),
+          ongoing: true,
+          autoCancel: false,
+          actions: [
+            AndroidNotificationAction(
+              _snoozeActionId,
+              'Snooze ${p.snoozeMinutes} min',
+            ),
+            const AndroidNotificationAction(
+              _dismissActionId,
+              'Dismiss',
+              cancelNotification: true,
+            ),
+          ],
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.alarmClock,
+      title: p.title,
+      body: p.notes ?? (p.snoozed ? 'Snoozed reminder' : 'Reminder'),
+      payload: alarm.encodedPayload,
+    );
+  }
 
-  static Future<void> cancelAll() => _plugin.cancelAll();
+  @override
+  Future<void> cancel(int id) async {
+    await AlarmService.init();
+    await _plugin.cancel(id: id);
+  }
+
+  @override
+  Future<List<PendingAlarm>> pending() async {
+    await AlarmService.init();
+    return [
+      for (final r in await _plugin.pendingNotificationRequests())
+        PendingAlarm(id: r.id, payload: r.payload),
+    ];
+  }
+
+  @override
+  Future<AlarmPermissions> permissions() async {
+    await AlarmService.init();
+    final android = _android;
+    if (android == null) {
+      return const AlarmPermissions(notifications: false, exact: false);
+    }
+    return AlarmPermissions(
+      notifications: await android.areNotificationsEnabled() ?? false,
+      exact: await android.canScheduleExactNotifications() ?? false,
+    );
+  }
+
+  @override
+  Future<AlarmPermissions> requestPermissions() async {
+    await AlarmService.init();
+    final android = _android;
+    if (android != null) {
+      await android.requestNotificationsPermission();
+      await android.requestExactAlarmsPermission();
+      await android.requestFullScreenIntentPermission();
+    }
+    return permissions();
+  }
 }

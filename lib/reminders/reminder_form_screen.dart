@@ -6,6 +6,7 @@ import '../core/models/money_transaction.dart';
 import '../core/models/reminder.dart';
 import '../core/status/transaction_status.dart';
 import '../people/people_providers.dart';
+import 'alarm_providers.dart';
 import 'reminder_form_logic.dart';
 
 const _toneLabels = {
@@ -17,11 +18,6 @@ const _vibrationLabels = {
   ReminderVibration.off: 'Off',
   ReminderVibration.short: 'Short',
   ReminderVibration.long: 'Long',
-};
-const _volumeLabels = {
-  ReminderVolume.low: 'Low',
-  ReminderVolume.medium: 'Medium',
-  ReminderVolume.high: 'High',
 };
 const _repeatLabels = {
   RepeatKind.none: 'Does not repeat',
@@ -68,7 +64,6 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
   late ReminderTone _tone = widget.existing?.tone ?? ReminderTone.alarm;
   late ReminderVibration _vibration =
       widget.existing?.vibration ?? ReminderVibration.long;
-  late ReminderVolume _volume = widget.existing?.volume ?? ReminderVolume.high;
   late String? _transactionId =
       widget.existing?.transactionId ?? widget.linkedTransactionId;
   String? _error;
@@ -170,7 +165,6 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
           snoozeMinutes: _snooze,
           tone: _tone,
           vibration: _vibration,
-          volume: _volume,
           transactionId: _transactionId,
           createdAt: DateTime.now(),
         ),
@@ -186,13 +180,18 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
           snoozeMinutes: _snooze,
           tone: _tone,
           vibration: _vibration,
-          volume: _volume,
           transactionId: _transactionId,
           done: existing.done,
           doneAt: existing.doneAt,
           createdAt: existing.createdAt,
         ),
       );
+    }
+    // Rings need notification and exact-alarm access; ask the first time.
+    try {
+      await ref.read(alarmSchedulerProvider).ensurePermissions();
+    } catch (_) {
+      // Saving never fails because alarms are unavailable.
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -380,10 +379,6 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
             Text('Vibration', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             _chips(_vibrationLabels, _vibration, (v) => _vibration = v),
-            const SizedBox(height: 16),
-            Text('Volume', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            _chips(_volumeLabels, _volume, (v) => _volume = v),
             const SizedBox(height: 16),
             DropdownButtonFormField<String?>(
               initialValue: linked,
