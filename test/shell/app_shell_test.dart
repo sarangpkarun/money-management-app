@@ -249,15 +249,13 @@ void main() {
       expect(find.text('You owe overall'), findsOneWidget);
     });
 
-    testWidgets('shows a red strip for overdue entries and opens Entries', (
+    testWidgets('an overdue entry shows in the Overdue section', (
       tester,
     ) async {
       await entry('Asha', TransactionType.lent, 300, due: DateTime(2026, 1, 1));
       await pumpShell(tester);
-      expect(find.text('1 overdue entry · ₹300'), findsOneWidget);
-      await tester.tap(find.text('1 overdue entry · ₹300'));
-      await tester.pumpAndSettle();
-      expect(find.text('Entries'), findsOneWidget);
+      expect(find.text('Overdue · 1'), findsOneWidget);
+      expect(find.text('Receive ₹300'), findsOneWidget);
     });
 
     testWidgets('lists recent entries and See all opens the full list', (

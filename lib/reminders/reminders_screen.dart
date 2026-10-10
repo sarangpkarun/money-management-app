@@ -64,6 +64,7 @@ class RemindersScreen extends ConsumerWidget {
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
+          heroTag: 'reminders-add',
           onPressed: () => _openForm(context),
           icon: const Icon(Icons.add_alarm),
           label: const Text('Add reminder'),

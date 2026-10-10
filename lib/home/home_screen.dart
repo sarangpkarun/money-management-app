@@ -12,6 +12,10 @@ import '../transactions/entries_screen.dart';
 import '../transactions/entry_detail_screen.dart';
 import '../transactions/entry_form_logic.dart';
 import '../transactions/status_badge.dart';
+import '../shell/add_entry_sheet.dart';
+import 'due_items.dart';
+import 'due_list_screen.dart';
+import 'due_row.dart';
 import 'home_totals.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -27,6 +31,12 @@ class HomeScreen extends ConsumerWidget {
     final entries = ref.watch(allTransactionsProvider);
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'home-add',
+        onPressed: () => showAddEntrySheet(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Add'),
+      ),
       appBar: AppBar(
         title: Text(name.isEmpty ? 'Hello' : 'Hello, $name'),
         actions: [
@@ -44,8 +54,9 @@ class HomeScreen extends ConsumerWidget {
           final now = DateTime.now();
           final totals = computeHomeTotals(all, now: now);
           final recent = recentEntries(all);
+          final groups = groupDueItems(dueItems(all, now), now);
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
             children: [
               _NetCard(totals: totals),
               const SizedBox(height: 12),
@@ -68,13 +79,19 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              if (totals.overdueCount > 0) ...[
-                const SizedBox(height: 12),
-                _OverdueStrip(
-                  totals: totals,
-                  onTap: () => _open(context, const EntriesScreen()),
-                ),
-              ],
+              _DueSection(
+                title: 'Overdue',
+                group: groups.overdue,
+                now: now,
+                overdue: true,
+              ),
+              _DueSection(title: 'This week', group: groups.thisWeek, now: now),
+              _DueSection(
+                title: 'This month',
+                group: groups.thisMonth,
+                now: now,
+              ),
+              _DueSection(title: 'Upcoming', group: groups.upcoming, now: now),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -205,40 +222,62 @@ class _AmountCard extends StatelessWidget {
   }
 }
 
-class _OverdueStrip extends StatelessWidget {
-  const _OverdueStrip({required this.totals, required this.onTap});
+/// One dashboard group: a header with the count and what it adds up to, the
+/// first few payments, and "See all" when there are more. Hidden when empty.
+class _DueSection extends StatelessWidget {
+  const _DueSection({
+    required this.title,
+    required this.group,
+    required this.now,
+    this.overdue = false,
+  });
 
-  final HomeTotals totals;
-  final VoidCallback onTap;
+  static const _shown = 5;
+
+  final String title;
+  final DueGroup group;
+  final DateTime now;
+  final bool overdue;
 
   @override
   Widget build(BuildContext context) {
-    final color = AppColors.pay(context);
-    final n = totals.overdueCount;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
+    if (group.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final color = overdue ? AppColors.pay(context) : null;
+    final totals = [
+      if (!group.toReceive.isZero) 'Receive ${group.toReceive.format()}',
+      if (!group.toPay.isZero) 'Pay ${group.toPay.format()}',
+    ].join(' · ');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: color),
-            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '$n overdue ${n == 1 ? 'entry' : 'entries'} · '
-                '${totals.overdueAmount.format()}',
-                style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                '$title · ${group.count}',
+                style: theme.textTheme.titleMedium?.copyWith(color: color),
               ),
             ),
-            Icon(Icons.chevron_right, color: color),
+            if (group.count > _shown)
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        DueListScreen(title: title, items: group.items),
+                  ),
+                ),
+                child: const Text('See all'),
+              ),
           ],
         ),
-      ),
+        Text(
+          totals,
+          style: TextStyle(color: color ?? theme.colorScheme.onSurfaceVariant),
+        ),
+        for (final i in group.items.take(_shown)) DueRow(item: i, now: now),
+      ],
     );
   }
 }
