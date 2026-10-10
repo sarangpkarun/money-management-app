@@ -5,6 +5,8 @@ import '../core/money/money.dart';
 import '../core/theme/app_colors.dart';
 import '../core/ui/format.dart';
 import '../core/ui/initials_avatar.dart';
+import 'contact_import_screen.dart';
+import 'duplicates_screen.dart';
 import 'people_providers.dart';
 import 'person_form_screen.dart';
 import 'person_ledger_screen.dart';
@@ -42,6 +44,18 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     ).push(MaterialPageRoute<void>(builder: (_) => const PersonFormScreen()));
   }
 
+  void _importContacts() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const ContactImportScreen()),
+    );
+  }
+
+  void _findDuplicates() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const DuplicatesScreen()));
+  }
+
   /// Tapping a person opens their ledger; editing is inside it.
   void _openLedger(PersonSummary summary) {
     Navigator.of(context).push(
@@ -62,6 +76,18 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
             tooltip: 'Add person',
             icon: const Icon(Icons.person_add_alt_1),
             onPressed: _addPerson,
+          ),
+          IconButton(
+            tooltip: 'Import from contacts',
+            icon: const Icon(Icons.contacts_outlined),
+            onPressed: _importContacts,
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            onSelected: (_) => _findDuplicates(),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'dupes', child: Text('Find duplicates')),
+            ],
           ),
           PopupMenuButton<PeopleSort>(
             tooltip: 'Sort',
@@ -110,7 +136,12 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Could not load people: $e')),
               data: (all) {
-                if (all.isEmpty) return _EmptyState(onAdd: _addPerson);
+                if (all.isEmpty) {
+                  return _EmptyState(
+                    onAdd: _addPerson,
+                    onImport: _importContacts,
+                  );
+                }
                 final shown = applyFilters(
                   all,
                   filter: _filter,
@@ -187,9 +218,10 @@ class _PersonRow extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd});
+  const _EmptyState({required this.onAdd, required this.onImport});
 
   final VoidCallback onAdd;
+  final VoidCallback onImport;
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +234,11 @@ class _EmptyState extends StatelessWidget {
           const Text('No people yet'),
           const SizedBox(height: 12),
           FilledButton(onPressed: onAdd, child: const Text('Add person')),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: onImport,
+            child: const Text('Import from contacts'),
+          ),
         ],
       ),
     );

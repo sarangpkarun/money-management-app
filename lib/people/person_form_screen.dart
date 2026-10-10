@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/data/providers.dart';
 import '../core/models/person.dart';
+import 'contacts_providers.dart';
 import 'people_providers.dart';
 
 /// Add a person, or edit/delete an existing one.
@@ -30,6 +31,15 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
     _phone.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickContact() async {
+    final picked = await ref.read(contactsSourceProvider).pickOne();
+    if (picked == null || !mounted) return;
+    setState(() {
+      _name.text = picked.name;
+      if (picked.phone != null) _phone.text = picked.phone!;
+    });
   }
 
   String? _blank(String s) => s.trim().isEmpty ? null : s.trim();
@@ -120,6 +130,14 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!_editing) ...[
+                OutlinedButton.icon(
+                  onPressed: _pickContact,
+                  icon: const Icon(Icons.contacts_outlined),
+                  label: const Text('Pick from contacts'),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
                 controller: _name,
                 textCapitalization: TextCapitalization.words,
