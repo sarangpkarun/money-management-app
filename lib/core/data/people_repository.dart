@@ -14,6 +14,12 @@ class PeopleRepository {
       .snapshots()
       .map((s) => s.docs.map((d) => Person.fromMap(d.id, d.data())).toList());
 
+  /// Everyone, once (for exports).
+  Future<List<Person>> getAll() async =>
+      (await _paths.people.orderBy('name').get()).docs
+          .map((d) => Person.fromMap(d.id, d.data()))
+          .toList();
+
   Future<String> add(Person person) async =>
       (await _paths.people.add(person.toMap())).id;
 

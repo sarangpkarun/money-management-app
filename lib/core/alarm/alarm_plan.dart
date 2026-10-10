@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import '../models/app_settings.dart';
 import '../models/money_transaction.dart';
 import '../models/reminder.dart';
 import '../reminders/repeat.dart';
 import 'auto_alarms.dart';
+import 'summary_plan.dart';
 
 /// Every alarm payload starts with this, so the scheduler can tell its own
 /// alarms from anything else the plugin has pending.
@@ -20,6 +22,10 @@ const _totalCap = 200;
 const _keyBits = 26;
 const _keyMask = (1 << _keyBits) - 1;
 
+/// What kind of notification an alarm is: a ringing alarm, or the quiet
+/// daily/weekly summary.
+enum AlarmKind { alarm, summary }
+
 /// What a ringing alarm needs to know, carried in the notification payload so
 /// the ring screen and the snooze action work with no database and no app.
 class AlarmPayload {
@@ -34,6 +40,7 @@ class AlarmPayload {
     this.snoozed = false,
     this.once = false,
     this.entryId,
+    this.kind = AlarmKind.alarm,
   });
 
   final String reminderId;
@@ -52,6 +59,7 @@ class AlarmPayload {
 
   /// The money entry an automatic payment alarm is about.
   final String? entryId;
+  final AlarmKind kind;
 
   String encode() =>
       alarmPayloadPrefix +
@@ -66,6 +74,7 @@ class AlarmPayload {
         if (snoozed) 'sz': true,
         if (once) 'o': true,
         if (entryId != null) 'x': entryId,
+        if (kind != AlarmKind.alarm) 'k': kind.name,
       });
 
   /// Null when [raw] is not one of our payloads or is damaged.
@@ -96,6 +105,7 @@ class AlarmPayload {
         snoozed: m['sz'] == true,
         once: m['o'] == true,
         entryId: m['x'] as String?,
+        kind: pick(AlarmKind.values, m['k'], AlarmKind.alarm),
       );
     } catch (_) {
       return null;
@@ -113,6 +123,7 @@ class AlarmPayload {
     snoozed: snoozed ?? this.snoozed,
     once: once,
     entryId: entryId,
+    kind: kind,
   );
 }
 
@@ -163,8 +174,17 @@ List<PlannedAlarm> planAllAlarms(
   List<MoneyTransaction> transactions,
   DateTime now, {
   int Function(String id) hash = reminderKey,
+  AppSettings settings = AppSettings.defaults,
 }) {
-  final autos = autoRings(transactions, now);
+  final autos = [
+    ...autoRings(
+      transactions,
+      now,
+      alarmMinutes: settings.autoAlarmMinutes,
+      quietHours: settings.quietHours,
+    ),
+    ...summaryRings(transactions, now, settings.summary, settings.quietHours),
+  ];
   final keys = keysForIds([
     for (final r in reminders) r.id,
     for (final a in autos) a.id,

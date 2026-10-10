@@ -8,6 +8,8 @@ import 'core/alarm/alarm_screen.dart';
 import 'core/alarm/alarm_service.dart';
 import 'core/data/firestore_setup.dart';
 import 'core/theme/app_theme.dart';
+import 'settings/format_host.dart';
+import 'settings/settings_providers.dart';
 import 'firebase_options.dart';
 import 'shell/app_shell.dart';
 
@@ -20,14 +22,14 @@ Future<void> main() async {
   runApp(const ProviderScope(child: MoneyManagerApp()));
 }
 
-class MoneyManagerApp extends StatefulWidget {
+class MoneyManagerApp extends ConsumerStatefulWidget {
   const MoneyManagerApp({super.key});
 
   @override
-  State<MoneyManagerApp> createState() => _MoneyManagerAppState();
+  ConsumerState<MoneyManagerApp> createState() => _MoneyManagerAppState();
 }
 
-class _MoneyManagerAppState extends State<MoneyManagerApp> {
+class _MoneyManagerAppState extends ConsumerState<MoneyManagerApp> {
   @override
   void initState() {
     super.initState();
@@ -52,13 +54,16 @@ class _MoneyManagerAppState extends State<MoneyManagerApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'Money Manager',
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      home: const AuthGate(home: AppShell()),
+    final theme = ref.watch(appSettingsProvider).theme;
+    return FormatHost(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        title: 'Money Manager',
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: themeModeFor(theme),
+        home: const AuthGate(home: AppShell()),
+      ),
     );
   }
 }

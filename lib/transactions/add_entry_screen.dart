@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/ui/format.dart';
 import '../core/data/providers.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/person.dart';
@@ -8,8 +9,6 @@ import '../core/money/money.dart';
 import '../people/person_autocomplete_field.dart';
 import 'entry_detail_screen.dart';
 import 'entry_form_logic.dart';
-
-String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
 /// Record money lent (they owe you) or borrowed (you owe them).
 class AddEntryScreen extends ConsumerStatefulWidget {
@@ -217,7 +216,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
                       final d = await _pick(_date);
                       if (d != null) setState(() => _date = d);
                     },
-                    child: Text('Date: ${_fmtDate(_date)}'),
+                    child: Text('Date: ${formatShortDate(_date)}'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -230,7 +229,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
                     child: Text(
                       _dueDate == null
                           ? 'Due date (optional)'
-                          : 'Due: ${_fmtDate(_dueDate!)}',
+                          : 'Due: ${formatShortDate(_dueDate!)}',
                     ),
                   ),
                 ),

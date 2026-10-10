@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/ui/format.dart';
 import '../core/data/providers.dart';
 import '../core/interest/interest.dart';
 import '../core/models/money_transaction.dart';
@@ -14,8 +15,6 @@ import 'prepayment_screen.dart';
 import 'payment_sheet.dart';
 import 'status_badge.dart';
 import 'transaction_providers.dart';
-
-String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
 class EntryDetailScreen extends ConsumerWidget {
   const EntryDetailScreen({super.key, required this.transactionId});
@@ -86,7 +85,7 @@ class EntryDetailScreen extends ConsumerWidget {
         title: const Text('Mark as unpaid?'),
         content: Text(
           'The last payment of ${last.amount.format()} '
-          '(${_fmtDate(last.date)}) will be removed and this entry '
+          '(${formatShortDate(last.date)}) will be removed and this entry '
           'reopened. Your other payments stay.',
         ),
         actions: [
@@ -218,8 +217,8 @@ class EntryDetailScreen extends ConsumerWidget {
           Text(t.title, style: Theme.of(context).textTheme.titleMedium),
           Text(
             [
-              'Date ${_fmtDate(t.entryDate)}',
-              if (t.dueDate != null) 'Due ${_fmtDate(t.dueDate!)}',
+              'Date ${formatShortDate(t.entryDate)}',
+              if (t.dueDate != null) 'Due ${formatShortDate(t.dueDate!)}',
             ].join(' · '),
           ),
           if (t.interestType != InterestType.none) ...[
@@ -273,7 +272,7 @@ class EntryDetailScreen extends ConsumerWidget {
                           title: Text(p.amount.format()),
                           subtitle: Text(
                             [
-                              _fmtDate(p.date),
+                              formatShortDate(p.date),
                               paymentModeLabel(p.mode),
                               if (p.note != null) p.note!,
                             ].join(' · '),

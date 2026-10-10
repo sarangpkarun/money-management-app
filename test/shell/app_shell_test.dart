@@ -122,7 +122,7 @@ void main() {
 
       await tester.tap(tab('Settings'));
       await tester.pumpAndSettle();
-      expect(find.text('Log out'), findsOneWidget);
+      expect(find.text('Profile'), findsOneWidget);
 
       await tester.tap(tab('Home'));
       await tester.pumpAndSettle();
@@ -288,6 +288,10 @@ void main() {
 
   group('Settings', () {
     Future<void> openSettings(WidgetTester tester) async {
+      // A tall screen so every settings row is on screen.
+      tester.view.physicalSize = const Size(900, 3200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await pumpShell(tester);
       await tester.tap(tab('Settings'));
       await tester.pumpAndSettle();

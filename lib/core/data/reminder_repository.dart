@@ -15,6 +15,12 @@ class ReminderRepository {
       .snapshots()
       .map((s) => s.docs.map((d) => Reminder.fromMap(d.id, d.data())).toList());
 
+  /// Every reminder, once (for exports).
+  Future<List<Reminder>> getAll() async =>
+      (await _paths.reminders.orderBy('at').get()).docs
+          .map((d) => Reminder.fromMap(d.id, d.data()))
+          .toList();
+
   Stream<Reminder?> watchOne(String id) => _paths.reminders
       .doc(id)
       .snapshots()

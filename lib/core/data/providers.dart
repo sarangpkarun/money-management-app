@@ -13,9 +13,16 @@ final firestoreProvider = Provider<FirebaseFirestore>(
   (ref) => FirebaseFirestore.instance,
 );
 
+/// Emits whenever someone signs in or out, so everything built on [uidProvider]
+/// (every repository and stream) follows a change of account.
+final _signedInUidProvider = StreamProvider<String?>(
+  (ref) => FirebaseAuth.instance.userChanges().map((u) => u?.uid),
+);
+
 /// The signed-in user's uid. Throws if nobody is signed in; screens behind the
 /// auth gate (added with the Auth step) can rely on it being set.
 final uidProvider = Provider<String>((ref) {
+  ref.watch(_signedInUidProvider);
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) throw StateError('No signed-in user');
   return user.uid;

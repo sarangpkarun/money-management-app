@@ -46,6 +46,12 @@ class TransactionRepository {
         return data == null ? null : MoneyTransaction.fromMap(s.id, data);
       });
 
+  /// Every entry, once (for exports).
+  Future<List<MoneyTransaction>> getAll() async =>
+      (await _paths.transactions.get()).docs
+          .map((d) => MoneyTransaction.fromMap(d.id, d.data()))
+          .toList();
+
   /// Edits the descriptive fields. Amounts are untouched; status is recomputed
   /// because the due date may have moved.
   Future<void> update(

@@ -1,3 +1,4 @@
+import '../core/ui/format.dart';
 import '../core/models/reminder.dart';
 
 const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -76,5 +77,4 @@ String formatTime(DateTime d) {
 }
 
 /// "7 Jan 2030, 9:30 am".
-String formatRing(DateTime d) =>
-    '${d.day} ${_months[d.month - 1]} ${d.year}, ${formatTime(d)}';
+String formatRing(DateTime d) => '${formatShortDate(d)}, ${formatTime(d)}';

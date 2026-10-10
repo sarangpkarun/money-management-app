@@ -1,3 +1,4 @@
+import '../core/ui/format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +7,7 @@ import '../core/models/money_transaction.dart';
 import '../core/models/reminder.dart';
 import '../core/status/transaction_status.dart';
 import '../people/people_providers.dart';
+import '../settings/settings_providers.dart';
 import 'alarm_providers.dart';
 import 'reminder_form_logic.dart';
 
@@ -71,10 +73,14 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
 
   bool get _isNew => widget.existing == null;
 
-  /// The next full hour.
-  static DateTime _defaultTime() {
-    final n = DateTime.now().add(const Duration(hours: 1));
-    return DateTime(n.year, n.month, n.day, n.hour);
+  /// The user's default reminder time today, or tomorrow if that has passed.
+  DateTime _defaultTime() {
+    final m = ref.read(appSettingsProvider).autoAlarmMinutes;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day, m ~/ 60, m % 60);
+    return today.isAfter(now)
+        ? today
+        : DateTime(now.year, now.month, now.day + 1, m ~/ 60, m % 60);
   }
 
   @override
@@ -308,7 +314,7 @@ class _ReminderFormScreenState extends ConsumerState<ReminderFormScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _pickDate,
                     icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text('${_at.day}/${_at.month}/${_at.year}'),
+                    label: Text(formatShortDate(_at)),
                   ),
                 ),
                 const SizedBox(width: 12),

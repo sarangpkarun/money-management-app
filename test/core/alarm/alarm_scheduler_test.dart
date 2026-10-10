@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_manager/core/alarm/alarm_plan.dart';
 import 'package:money_manager/core/alarm/alarm_scheduler.dart';
+import 'package:money_manager/core/models/app_settings.dart';
 import 'package:money_manager/core/models/money_transaction.dart';
 import 'package:money_manager/core/money/money.dart';
 import 'package:money_manager/core/status/transaction_status.dart';
@@ -312,6 +313,82 @@ void main() {
       ]);
       expect(results.map((r) => r.scheduled), [3, 0, 0]);
       expect(gw.scheduled.length, 3);
+    });
+  });
+
+  group('settings', () {
+    MoneyTransaction txn(DateTime due) => MoneyTransaction(
+      id: 'a',
+      type: TransactionType.lent,
+      personId: 'p',
+      personName: 'Asha',
+      title: 'Loan',
+      totalAmount: Money.fromRupees(100),
+      dueDate: due,
+      createdAt: DateTime(2026, 1, 1),
+    );
+    final daily = const AppSettings().copyWith(
+      summary: const SummarySettings(mode: SummaryMode.daily),
+    );
+
+    test(
+      'a summary is scheduled, kept, and cancelled when switched off',
+      () async {
+        final t = [txn(DateTime(2030, 1, 10))];
+        var r = await sched.sync(
+          const [],
+          now,
+          transactions: t,
+          settings: daily,
+        );
+        expect(r.scheduled, 3 + 7);
+        r = await sched.sync(const [], now, transactions: t, settings: daily);
+        expect(r.scheduled, 0);
+        expect(r.cancelled, 0);
+        r = await sched.sync(const [], now, transactions: t);
+        expect(r.cancelled, 7);
+        expect(gw.scheduled.length, 3);
+      },
+    );
+
+    test('changing the alarm time reschedules automatic alarms only', () async {
+      final t = [txn(DateTime(2030, 1, 10))];
+      final manual = rem('r', DateTime(2030, 1, 8, 9));
+      await sched.sync([manual], now, transactions: t);
+      final before = gw.scheduleCalls;
+      final r = await sched.sync(
+        [manual],
+        now,
+        transactions: t,
+        settings: const AppSettings(autoAlarmMinutes: 7 * 60),
+      );
+      expect(r.scheduled, 3);
+      expect(gw.scheduleCalls, before + 3);
+      final autoTimes = gw.scheduled.values
+          .where((a) => a.payload.entryId != null)
+          .map((a) => a.at.hour);
+      expect(autoTimes.every((h) => h == 7), isTrue);
+    });
+
+    test('turning quiet hours on moves a ring inside the window', () async {
+      final t = [txn(DateTime(2030, 1, 10))];
+      await sched.sync(
+        const [],
+        now,
+        transactions: t,
+        settings: const AppSettings(autoAlarmMinutes: 23 * 60),
+      );
+      final r = await sched.sync(
+        const [],
+        now,
+        transactions: t,
+        settings: const AppSettings(
+          autoAlarmMinutes: 23 * 60,
+          quietHours: QuietHours(enabled: true),
+        ),
+      );
+      expect(r.scheduled, 3);
+      expect(gw.scheduled.values.every((a) => a.at.hour == 7), isTrue);
     });
   });
 }

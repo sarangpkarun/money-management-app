@@ -5,6 +5,7 @@ import '../core/alarm/alarm_scheduler.dart';
 import '../core/alarm/alarm_service.dart';
 import '../core/alarm/settings_opener.dart';
 import '../people/people_providers.dart';
+import '../settings/settings_providers.dart';
 import 'reminder_providers.dart';
 
 /// The phone's alarm system. Tests replace it with a fake.
@@ -24,11 +25,18 @@ final alarmSyncProvider = Provider<void>((ref) {
     final reminders = ref.read(remindersProvider).value;
     final entries = ref.read(allTransactionsProvider).value;
     if (reminders == null || entries == null) return;
-    scheduler.sync(reminders, DateTime.now(), transactions: entries);
+    scheduler.sync(
+      reminders,
+      DateTime.now(),
+      transactions: entries,
+      settings: ref.read(appSettingsProvider),
+    );
   }
 
   ref.listen(remindersProvider, (_, _) => run(), fireImmediately: true);
   ref.listen(allTransactionsProvider, (_, _) => run(), fireImmediately: true);
+  // Alarm time, quiet hours and the summary all change what is planned.
+  ref.listen(appSettingsProvider, (_, _) => run());
 });
 
 /// Opens system settings pages. Tests replace it with a fake.

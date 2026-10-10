@@ -1,13 +1,14 @@
 import '../interest/interest.dart';
+import '../models/app_settings.dart';
 import '../models/money_transaction.dart';
 import '../models/reminder.dart';
 import '../money/money.dart';
 import '../status/transaction_status.dart';
 import 'alarm_plan.dart';
+import 'quiet_hours.dart';
 
-/// The hour automatic payment alarms ring at (9:00 am). Phase 3 makes it a
-/// setting.
-const autoAlarmHour = 9;
+/// When automatic payment alarms ring unless the user changes it: 9:00 am.
+const defaultAutoAlarmMinutes = 9 * 60;
 
 /// How many minutes an automatic alarm snoozes for.
 const autoSnoozeMinutes = 10;
@@ -50,13 +51,19 @@ bool _wanted(MoneyTransaction t) =>
 String _id(MoneyTransaction t, _Due d, _When w) =>
     'auto:${t.id}:${d.number}:${_suffix[w]}';
 
-DateTime _ringAt(DateTime due, _When w) {
+DateTime _ringAt(DateTime due, _When w, int minutes) {
   final offset = switch (w) {
     _When.before => -1,
     _When.due => 0,
     _When.overdue => 1,
   };
-  return DateTime(due.year, due.month, due.day + offset, autoAlarmHour);
+  return DateTime(
+    due.year,
+    due.month,
+    due.day + offset,
+    minutes ~/ 60,
+    minutes % 60,
+  );
 }
 
 String _what(MoneyTransaction t, _Due d) {
@@ -82,13 +89,23 @@ class AutoRing {
 /// for each unpaid payment with a due date, 9:00 the day before ("due
 /// tomorrow"), on the day ("due today") and the day after ("overdue"). Entries
 /// that are paid or have automatic reminders switched off get none.
-List<AutoRing> autoRings(List<MoneyTransaction> transactions, DateTime now) {
+List<AutoRing> autoRings(
+  List<MoneyTransaction> transactions,
+  DateTime now, {
+  int alarmMinutes = defaultAutoAlarmMinutes,
+  QuietHours quietHours = const QuietHours(),
+}) {
   final out = <AutoRing>[];
   for (final t in transactions) {
     if (!_wanted(t)) continue;
     for (final d in _dues(t, now)) {
       for (final w in _When.values) {
-        final at = _ringAt(d.date, w);
+        // Quiet hours delay a ring to the end of the window; a ring whose time
+        // has passed but whose delayed time is still ahead still rings then.
+        final at = applyQuietHours(
+          _ringAt(d.date, w, alarmMinutes),
+          quietHours,
+        );
         if (!at.isAfter(now)) continue;
         out.add(
           AutoRing(

@@ -15,6 +15,9 @@ const _dismissActionId = 'dismiss';
 
 final _plugin = FlutterLocalNotificationsPlugin();
 
+/// The notification channel of the summary notifications.
+const summaryChannelId = 'summary_v1';
+
 /// Handles notification actions while the app is not running (runs in its own
 /// isolate): Snooze re-schedules the same alarm after the reminder's minutes.
 @pragma('vm:entry-point')
@@ -47,6 +50,8 @@ class AlarmService {
       ),
       onDidReceiveNotificationResponse: (r) {
         final payload = AlarmPayload.decode(r.payload);
+        // A summary just opens the app; only alarms open the ring screen.
+        if (payload?.kind == AlarmKind.summary) return;
         if (r.actionId == null && payload != null && r.id != null) {
           onAlarmOpened?.call(r.id!, payload);
         } else {
@@ -60,6 +65,7 @@ class AlarmService {
     final payload = AlarmPayload.decode(r?.payload);
     if (launch?.didNotificationLaunchApp == true &&
         payload != null &&
+        payload.kind == AlarmKind.alarm &&
         r?.id != null) {
       launchedBy = (id: r!.id!, payload: payload);
     }
@@ -99,6 +105,7 @@ class PluginAlarmGateway implements AlarmGateway {
   Future<void> schedule(PlannedAlarm alarm) async {
     await AlarmService.init();
     final p = alarm.payload;
+    if (p.kind == AlarmKind.summary) return _scheduleSummary(alarm);
     final spec = alarmChannelFor(p.tone, p.vibration);
     await _ensureChannel(spec);
     await _plugin.zonedSchedule(
@@ -187,6 +194,38 @@ class PluginAlarmGateway implements AlarmGateway {
       androidScheduleMode: AndroidScheduleMode.alarmClock,
       title: 'Spike-config alarm',
       body: 'Old configuration',
+    );
+  }
+
+  /// The daily/weekly summary: an ordinary notification with the phone's
+  /// normal notification sound, no full-screen takeover and no looping.
+  Future<void> _scheduleSummary(PlannedAlarm alarm) async {
+    final p = alarm.payload;
+    await _android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        summaryChannelId,
+        'Daily and weekly summary',
+        description: 'A short summary of what is due',
+        importance: Importance.defaultImportance,
+      ),
+    );
+    await _plugin.zonedSchedule(
+      id: alarm.id,
+      scheduledDate: tz.TZDateTime.from(alarm.at, tz.UTC),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          summaryChannelId,
+          'Daily and weekly summary',
+          channelDescription: 'A short summary of what is due',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          styleInformation: BigTextStyleInformation(''),
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      title: p.title,
+      body: p.notes,
+      payload: alarm.encodedPayload,
     );
   }
 

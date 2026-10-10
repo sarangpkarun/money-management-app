@@ -1,4 +1,5 @@
 import '../core/alarm/auto_alarms.dart';
+import '../core/models/app_settings.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/reminder.dart';
 import '../core/reminders/repeat.dart';
@@ -41,8 +42,9 @@ class ReminderLists {
 ReminderLists buildReminderLists(
   List<Reminder> reminders,
   List<MoneyTransaction> transactions,
-  DateTime now,
-) {
+  DateTime now, {
+  AppSettings settings = AppSettings.defaults,
+}) {
   final upcoming = <UpcomingItem>[];
   final completed = <Reminder>[];
   final missed = <Reminder>[];
@@ -61,7 +63,12 @@ ReminderLists buildReminderLists(
   }
 
   final horizon = now.add(const Duration(days: upcomingAutoDays));
-  for (final a in autoRings(transactions, now)) {
+  for (final a in autoRings(
+    transactions,
+    now,
+    alarmMinutes: settings.autoAlarmMinutes,
+    quietHours: settings.quietHours,
+  )) {
     if (!a.payload.at.isAfter(horizon)) upcoming.add(UpcomingItem.auto(a));
   }
 

@@ -1,3 +1,4 @@
+import '../models/app_settings.dart';
 import '../models/money_transaction.dart';
 import '../models/reminder.dart';
 import 'alarm_gateway.dart';
@@ -33,8 +34,11 @@ class AlarmScheduler {
     List<Reminder> reminders,
     DateTime now, {
     List<MoneyTransaction> transactions = const [],
+    AppSettings settings = AppSettings.defaults,
   }) {
-    final run = _queue.then((_) => _sync(reminders, transactions, now));
+    final run = _queue.then(
+      (_) => _sync(reminders, transactions, now, settings),
+    );
     _queue = run.then((_) {}, onError: (_) {});
     return run;
   }
@@ -43,8 +47,14 @@ class AlarmScheduler {
     List<Reminder> reminders,
     List<MoneyTransaction> transactions,
     DateTime now,
+    AppSettings settings,
   ) async {
-    final plan = planAllAlarms(reminders, transactions, now);
+    final plan = planAllAlarms(
+      reminders,
+      transactions,
+      now,
+      settings: settings,
+    );
     final planned = {for (final a in plan) a.id: a};
     final active = {
       for (final r in reminders)

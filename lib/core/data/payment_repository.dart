@@ -49,6 +49,12 @@ class PaymentRepository {
       .snapshots()
       .map((s) => s.docs.map((d) => Payment.fromMap(d.id, d.data())).toList());
 
+  /// The payments of one entry, once (for exports).
+  Future<List<Payment>> getAll(String txnId) async =>
+      (await _paths.payments(txnId).orderBy('date').get()).docs
+          .map((d) => Payment.fromMap(d.id, d.data()))
+          .toList();
+
   Future<String> add(String txnId, Payment payment) {
     final ref = _paths.payments(txnId).doc();
     return _apply(txnId, (txn, t) {

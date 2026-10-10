@@ -1,5 +1,19 @@
 enum NumberGrouping { indian, western }
 
+/// The symbol and grouping `Money.format` uses when it is not told otherwise.
+/// The app sets these from the user's settings.
+class MoneyFormat {
+  const MoneyFormat._();
+
+  static String symbol = '₹';
+  static NumberGrouping grouping = NumberGrouping.indian;
+
+  static void reset() {
+    symbol = '₹';
+    grouping = NumberGrouping.indian;
+  }
+}
+
 /// An amount of money stored as an integer number of paise, so arithmetic is
 /// exact and never touches floating point.
 class Money implements Comparable<Money> {
@@ -47,15 +61,15 @@ class Money implements Comparable<Money> {
 
   /// Formats as e.g. `₹1,00,000` (Indian) or `₹100,000` (western). Paise are
   /// shown only when non-zero.
-  String format({
-    String symbol = '₹',
-    NumberGrouping grouping = NumberGrouping.indian,
-  }) {
+  String format({String? symbol, NumberGrouping? grouping}) {
     final abs = paise.abs();
-    final rupees = _group((abs ~/ 100).toString(), grouping);
+    final rupees = _group(
+      (abs ~/ 100).toString(),
+      grouping ?? MoneyFormat.grouping,
+    );
     final rem = abs % 100;
     final fraction = rem == 0 ? '' : '.${rem.toString().padLeft(2, '0')}';
-    return '${isNegative ? '-' : ''}$symbol$rupees$fraction';
+    return '${isNegative ? '-' : ''}${symbol ?? MoneyFormat.symbol}$rupees$fraction';
   }
 
   static String _group(String digits, NumberGrouping grouping) {

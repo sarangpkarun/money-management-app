@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/app_settings.dart';
 import '../models/app_user.dart';
 import 'paths.dart';
 
@@ -19,8 +20,13 @@ class UserRepository {
     return data == null ? null : AppUser.fromMap(data);
   });
 
+  /// Saves name, currency and timezone. Settings are left as they are.
   Future<void> save(AppUser user) =>
       _paths.user.set(user.toMap(), SetOptions(merge: true));
+
+  /// Saves the display and reminder settings only.
+  Future<void> saveSettings(AppSettings settings) =>
+      _paths.user.set({'settings': settings.toMap()}, SetOptions(merge: true));
 
   /// Creates a default profile if none exists yet; never overwrites one.
   Future<void> ensureProfile(String fallbackName) async {

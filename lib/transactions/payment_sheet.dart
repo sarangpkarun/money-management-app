@@ -204,7 +204,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             OutlinedButton.icon(
               onPressed: _pickDate,
               icon: const Icon(Icons.calendar_today, size: 18),
-              label: Text('Date: ${_date.day}/${_date.month}/${_date.year}'),
+              label: Text('Date: ${formatShortDate(_date)}'),
             ),
             const SizedBox(height: 12),
             Wrap(
