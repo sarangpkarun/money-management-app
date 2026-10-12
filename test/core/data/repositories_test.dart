@@ -240,6 +240,49 @@ void main() {
     });
   });
 
+  group('editing an entry', () {
+    test('changing the amount recomputes balance and status', () async {
+      final id = await newTxn();
+      await payments.add(id, pay(1000));
+      expect((await txns.get(id))!.status, TransactionStatus.paid);
+
+      await txns.update(id, title: 'Loan', totalAmount: Money.fromRupees(1500));
+      final u = (await txns.get(id))!;
+      expect(u.totalAmount, Money.fromRupees(1500));
+      expect(u.balance, Money.fromRupees(500));
+      expect(u.status, TransactionStatus.partiallyPaid);
+      expect(u.settledAt, isNull);
+    });
+
+    test('an amount below what is paid is rejected', () async {
+      final id = await newTxn();
+      await payments.add(id, pay(600));
+      expect(
+        () =>
+            txns.update(id, title: 'Loan', totalAmount: Money.fromRupees(500)),
+        throwsA(isA<EntryEditError>()),
+      );
+      expect((await txns.get(id))!.totalAmount, Money.fromRupees(1000));
+    });
+
+    test('changing the person and interest is saved', () async {
+      final id = await newTxn();
+      await txns.update(
+        id,
+        title: 'Loan',
+        personId: 'p2',
+        personName: 'Ravi',
+        interestType: InterestType.simple,
+        interestRate: 10,
+      );
+      final u = (await txns.get(id))!;
+      expect(u.personId, 'p2');
+      expect(u.personName, 'Ravi');
+      expect(u.interestType, InterestType.simple);
+      expect(u.interestRate, 10);
+    });
+  });
+
   group('interest fields', () {
     test('interest and repayment type round-trip', () async {
       final personId = await people.add(Person(name: 'Ravi', createdAt: now));

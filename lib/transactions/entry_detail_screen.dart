@@ -7,6 +7,7 @@ import '../core/interest/interest.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/payment.dart';
 import '../core/status/transaction_status.dart';
+import 'add_entry_screen.dart';
 import 'emi_payment_sheet.dart';
 import 'emi_schedule_view.dart';
 import 'entry_form_logic.dart';
@@ -152,6 +153,12 @@ class EntryDetailScreen extends ConsumerWidget {
                       builder: (_) => PrepaymentScreen(plan: t.emiPlan!),
                     ),
                   );
+                case 'edit':
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AddEntryScreen(existing: t),
+                    ),
+                  );
                 default:
                   _delete(context, ref, t);
               }
@@ -169,6 +176,7 @@ class EntryDetailScreen extends ConsumerWidget {
                   value: 'prepay',
                   child: Text('Prepay / foreclose'),
                 ),
+              const PopupMenuItem(value: 'edit', child: Text('Edit entry')),
               const PopupMenuItem(value: 'delete', child: Text('Delete entry')),
             ],
           ),

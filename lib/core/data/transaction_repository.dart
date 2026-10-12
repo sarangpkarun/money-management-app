@@ -1,12 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../emi/emi_schedule.dart';
+import '../interest/interest.dart';
 import '../instalments/instalment_plan.dart';
 import '../models/emi_plan.dart';
 import '../models/money_transaction.dart';
 import '../money/money.dart';
 import '../status/transaction_status.dart';
 import 'paths.dart';
+
+/// Thrown when an entry edit would leave it in an invalid state.
+class EntryEditError implements Exception {
+  const EntryEditError(this.message);
+  final String message;
+  @override
+  String toString() => 'EntryEditError: $message';
+}
 
 class TransactionRepository {
   TransactionRepository(
@@ -52,8 +61,10 @@ class TransactionRepository {
           .map((d) => MoneyTransaction.fromMap(d.id, d.data()))
           .toList();
 
-  /// Edits the descriptive fields. Amounts are untouched; status is recomputed
-  /// because the due date may have moved.
+  /// Edits an entry. Descriptive fields always apply; passing [totalAmount],
+  /// [personId]/[personName], [interestType], [interestRate] or [repaymentType]
+  /// changes those too, and the balance, status and settlement are recomputed.
+  /// Throws [EntryEditError] if the new amount is below what is already paid.
   Future<void> update(
     String id, {
     required String title,
@@ -61,6 +72,12 @@ class TransactionRepository {
     DateTime? dueDate,
     bool clearDueDate = false,
     DateTime? date,
+    Money? totalAmount,
+    String? personId,
+    String? personName,
+    InterestType? interestType,
+    double? interestRate,
+    RepaymentType? repaymentType,
   }) {
     final ref = _paths.transactions.doc(id);
     return _paths.db.runTransaction((txn) async {
@@ -68,22 +85,58 @@ class TransactionRepository {
         id,
         (await txn.get(ref)).data()!,
       );
+      final newTotal = totalAmount ?? current.totalAmount;
+      if (newTotal < current.paidTotal) {
+        throw const EntryEditError('Amount cannot be less than already paid');
+      }
       final newDue = clearDueDate ? null : (dueDate ?? current.dueDate);
+      final newDate = date ?? current.date;
+      final newInterestType = interestType ?? current.interestType;
+      final newRate = newInterestType == InterestType.none
+          ? null
+          : (interestRate ?? current.interestRate);
+      final now = _now();
+      final edited = MoneyTransaction(
+        type: current.type,
+        personId: personId ?? current.personId,
+        personName: personName ?? current.personName,
+        title: title,
+        totalAmount: newTotal,
+        paidTotal: current.paidTotal,
+        dueDate: newDue,
+        interestType: newInterestType,
+        interestRate: newRate,
+        repaymentType: repaymentType ?? current.repaymentType,
+        createdAt: current.createdAt,
+        date: newDate,
+      );
+      // Interest terms may have changed, so settlement is re-evaluated from
+      // scratch rather than keeping the old frozen date.
+      final due = amountDueAt(edited, now);
       final status = computeStatus(
-        total: current.totalAmount,
+        total: due,
         paid: current.paidTotal,
         dueDate: newDue,
-        now: _now(),
+        now: now,
       );
+      final left = due - current.paidTotal;
       txn.update(ref, {
         'title': title,
         'notes': notes,
         'dueDate': newDue == null ? null : Timestamp.fromDate(newDue),
-        'date': (date ?? current.date) == null
-            ? null
-            : Timestamp.fromDate((date ?? current.date)!),
+        'date': newDate == null ? null : Timestamp.fromDate(newDate),
+        'personId': edited.personId,
+        'personName': edited.personName,
+        'totalAmount': newTotal.paise,
+        'interestType': newInterestType.name,
+        'interestRate': newRate,
+        'repaymentType': edited.repaymentType.name,
+        'balance': (left.isNegative ? Money.zero : left).paise,
         'status': status.name,
-        'lastActivityAt': Timestamp.fromDate(_now()),
+        'settledAt': status == TransactionStatus.paid
+            ? Timestamp.fromDate(current.settledAt ?? now)
+            : null,
+        'lastActivityAt': Timestamp.fromDate(now),
       });
     });
   }

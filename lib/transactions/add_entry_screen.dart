@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/ui/format.dart';
 import '../core/data/providers.dart';
+import '../core/data/transaction_repository.dart';
 import '../core/models/money_transaction.dart';
 import '../core/models/person.dart';
 import '../core/money/money.dart';
@@ -16,6 +17,7 @@ class AddEntryScreen extends ConsumerStatefulWidget {
     super.key,
     this.initialType = TransactionType.lent,
     this.initialPerson,
+    this.existing,
   });
 
   final TransactionType initialType;
@@ -23,13 +25,24 @@ class AddEntryScreen extends ConsumerStatefulWidget {
   /// Pre-selects the person (used from their ledger).
   final Person? initialPerson;
 
+  /// When set, the screen edits this entry instead of creating one.
+  final MoneyTransaction? existing;
+
   @override
   ConsumerState<AddEntryScreen> createState() => _AddEntryScreenState();
 }
 
 class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
-  late TransactionType _type = widget.initialType;
-  late Person? _person = widget.initialPerson;
+  late TransactionType _type = widget.existing?.type ?? widget.initialType;
+  late Person? _person =
+      widget.initialPerson ??
+      (widget.existing == null
+          ? null
+          : Person(
+              id: widget.existing!.personId,
+              name: widget.existing!.personName,
+              createdAt: widget.existing!.createdAt,
+            ));
   final _amount = TextEditingController();
   final _title = TextEditingController();
   final _notes = TextEditingController();
@@ -44,6 +57,31 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
   InterestType get _effectiveInterest =>
       _borrowed ? _interestType : InterestType.none;
   bool _busy = false;
+
+  bool get _editing => widget.existing != null;
+
+  /// EMI and instalment entries have a generated schedule, so only their
+  /// descriptive fields can change.
+  bool get _limited =>
+      _editing &&
+      (_type == TransactionType.emi || _type == TransactionType.instalment);
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    if (e == null) return;
+    _amount.text = e.totalAmount.paise % 100 == 0
+        ? '${e.totalAmount.paise ~/ 100}'
+        : (e.totalAmount.paise / 100).toStringAsFixed(2);
+    _title.text = e.title;
+    _notes.text = e.notes ?? '';
+    _date = e.entryDate;
+    _dueDate = e.dueDate;
+    _interestType = e.interestType;
+    _repayment = e.repaymentType;
+    if (e.interestRate != null) _rate.text = '${e.interestRate}';
+  }
 
   @override
   void dispose() {
@@ -79,26 +117,61 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
     final title = _title.text.trim().isEmpty
         ? (_type == TransactionType.lent ? 'Money lent' : 'Money borrowed')
         : _title.text.trim();
-    final id = await ref
-        .read(transactionRepositoryProvider)
-        .add(
-          MoneyTransaction(
-            type: _type,
-            personId: _person!.id,
-            personName: _person!.name,
-            title: title,
-            totalAmount: Money.parse(_amount.text)!,
-            dueDate: _dueDate,
-            interestType: _effectiveInterest,
-            interestRate: _effectiveInterest == InterestType.none
-                ? null
-                : double.parse(_rate.text.trim()),
-            repaymentType: _borrowed ? _repayment : RepaymentType.flexible,
-            createdAt: now,
-            date: _date,
-            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-          ),
+    final repo = ref.read(transactionRepositoryProvider);
+    final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
+    final existing = widget.existing;
+    if (existing != null) {
+      try {
+        await repo.update(
+          existing.id,
+          title: _title.text.trim().isEmpty
+              ? existing.title
+              : _title.text.trim(),
+          notes: notes,
+          dueDate: _dueDate,
+          clearDueDate: _dueDate == null,
+          date: _date,
+          totalAmount: _limited ? null : Money.parse(_amount.text)!,
+          personId: _limited ? null : _person!.id,
+          personName: _limited ? null : _person!.name,
+          interestType: _limited ? null : _effectiveInterest,
+          interestRate: _limited || _effectiveInterest == InterestType.none
+              ? null
+              : double.parse(_rate.text.trim()),
+          repaymentType: _limited
+              ? null
+              : (_borrowed ? _repayment : RepaymentType.flexible),
         );
+      } on EntryEditError catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _errors = EntryErrors(amount: e.message);
+        });
+        return;
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      return;
+    }
+    final id = await repo.add(
+      MoneyTransaction(
+        type: _type,
+        personId: _person!.id,
+        personName: _person!.name,
+        title: title,
+        totalAmount: Money.parse(_amount.text)!,
+        dueDate: _dueDate,
+        interestType: _effectiveInterest,
+        interestRate: _effectiveInterest == InterestType.none
+            ? null
+            : double.parse(_rate.text.trim()),
+        repaymentType: _borrowed ? _repayment : RepaymentType.flexible,
+        createdAt: now,
+        date: _date,
+        notes: notes,
+      ),
+    );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
@@ -110,7 +183,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add entry')),
+      appBar: AppBar(title: Text(_editing ? 'Edit entry' : 'Add entry')),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -125,48 +198,53 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<TransactionType>(
-              segments: const [
-                ButtonSegment(
-                  value: TransactionType.lent,
-                  label: Text('Lent'),
-                  icon: Icon(Icons.arrow_upward),
-                ),
-                ButtonSegment(
-                  value: TransactionType.borrowed,
-                  label: Text('Borrowed'),
-                  icon: Icon(Icons.arrow_downward),
-                ),
-              ],
-              selected: {_type},
-              onSelectionChanged: (s) => setState(() => _type = s.first),
-            ),
-            const SizedBox(height: 16),
-            PersonAutocompleteField(
-              initialPerson: widget.initialPerson,
-              errorText: _errors.person,
-              onSelected: (p) => setState(() => _person = p),
-              onTextChanged: (text) {
-                if (_person != null && text.trim() != _person!.name) {
-                  setState(() => _person = null);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _amount,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+            if (!_limited)
+              SegmentedButton<TransactionType>(
+                segments: const [
+                  ButtonSegment(
+                    value: TransactionType.lent,
+                    label: Text('Lent'),
+                    icon: Icon(Icons.arrow_upward),
+                  ),
+                  ButtonSegment(
+                    value: TransactionType.borrowed,
+                    label: Text('Borrowed'),
+                    icon: Icon(Icons.arrow_downward),
+                  ),
+                ],
+                selected: {_type},
+                onSelectionChanged: _editing
+                    ? null
+                    : (s) => setState(() => _type = s.first),
               ),
-              style: Theme.of(context).textTheme.headlineMedium,
-              decoration: InputDecoration(
-                labelText: 'Amount',
-                prefixText: '₹ ',
-                errorText: _errors.amount,
+            if (!_limited) const SizedBox(height: 16),
+            if (!_limited)
+              PersonAutocompleteField(
+                initialPerson: widget.initialPerson ?? _person,
+                errorText: _errors.person,
+                onSelected: (p) => setState(() => _person = p),
+                onTextChanged: (text) {
+                  if (_person != null && text.trim() != _person!.name) {
+                    setState(() => _person = null);
+                  }
+                },
               ),
-            ),
-            const SizedBox(height: 16),
-            if (_borrowed) ...[
+            if (!_limited) const SizedBox(height: 16),
+            if (!_limited)
+              TextField(
+                controller: _amount,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: Theme.of(context).textTheme.headlineMedium,
+                decoration: InputDecoration(
+                  labelText: 'Amount',
+                  prefixText: '₹ ',
+                  errorText: _errors.amount,
+                ),
+              ),
+            if (!_limited) const SizedBox(height: 16),
+            if (_borrowed && !_limited) ...[
               Text('Interest', style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 8),
               SegmentedButton<InterestType>(
