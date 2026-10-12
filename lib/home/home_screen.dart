@@ -6,6 +6,7 @@ import '../core/data/providers.dart';
 import '../core/money/money.dart';
 import '../core/theme/app_colors.dart';
 import '../core/ui/initials_avatar.dart';
+import '../log/calendar_screen.dart';
 import '../people/people_providers.dart';
 import '../settings/profile_screen.dart';
 import '../transactions/add_entry_screen.dart';
@@ -41,6 +42,11 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(name.isEmpty ? 'Hello' : 'Hello, $name'),
         actions: [
+          IconButton(
+            tooltip: 'Calendar log',
+            icon: const Icon(Icons.calendar_month),
+            onPressed: () => _open(context, const CalendarScreen()),
+          ),
           IconButton(
             tooltip: 'Profile',
             icon: const Icon(Icons.account_circle_outlined),

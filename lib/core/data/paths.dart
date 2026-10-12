@@ -16,6 +16,7 @@ class UserPaths {
       user.collection('transactions');
   CollectionReference<Map<String, dynamic>> get reminders =>
       user.collection('reminders');
+  CollectionReference<Map<String, dynamic>> get logs => user.collection('logs');
   CollectionReference<Map<String, dynamic>> payments(String txnId) =>
       transactions.doc(txnId).collection('payments');
 }

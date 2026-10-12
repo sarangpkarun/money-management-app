@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/models/money_transaction.dart';
+import '../log/add_log_screen.dart';
 import '../transactions/add_emi_screen.dart';
 import '../reminders/reminder_form_screen.dart';
 import '../transactions/add_entry_screen.dart';
@@ -76,6 +77,17 @@ Future<void> showAddEntrySheet(BuildContext context) {
                   MaterialPageRoute<void>(
                     builder: (_) => const AddInstalmentScreen(),
                   ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_calendar),
+              title: const Text('Log a spend or note'),
+              subtitle: const Text('Dated record: what, how much, paid with'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const AddLogScreen()),
                 );
               },
             ),

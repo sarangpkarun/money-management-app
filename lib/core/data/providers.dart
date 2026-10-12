@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/app_user.dart';
+import 'log_repository.dart';
 import 'payment_repository.dart';
 import 'people_repository.dart';
 import 'reminder_repository.dart';
@@ -43,6 +44,10 @@ final transactionRepositoryProvider = Provider(
 final paymentRepositoryProvider = Provider(
   (ref) =>
       PaymentRepository(ref.watch(firestoreProvider), ref.watch(uidProvider)),
+);
+
+final logRepositoryProvider = Provider(
+  (ref) => LogRepository(ref.watch(firestoreProvider), ref.watch(uidProvider)),
 );
 
 final userRepositoryProvider = Provider(
