@@ -231,10 +231,7 @@ class EntryDetailScreen extends ConsumerWidget {
           ),
           if (t.interestType != InterestType.none) ...[
             const SizedBox(height: 12),
-            Text(
-              '${interestTypeLabel(t.interestType)} interest at '
-              '${formatRate(t.interestRate ?? 0)}% a year',
-            ),
+            Text(interestSummary(t)),
             Text('Interest to date ${interestFor(t, DateTime.now()).format()}'),
           ],
           if (t.type == TransactionType.borrowed)

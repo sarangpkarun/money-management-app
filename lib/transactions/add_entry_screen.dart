@@ -51,11 +51,11 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
   EntryErrors _errors = const EntryErrors();
   InterestType _interestType = InterestType.none;
   RepaymentType _repayment = RepaymentType.flexible;
+  RatePeriod _period = RatePeriod.year;
   final _rate = TextEditingController();
 
   bool get _borrowed => _type == TransactionType.borrowed;
-  InterestType get _effectiveInterest =>
-      _borrowed ? _interestType : InterestType.none;
+  InterestType get _effectiveInterest => _interestType;
   bool _busy = false;
 
   bool get _editing => widget.existing != null;
@@ -80,6 +80,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
     _dueDate = e.dueDate;
     _interestType = e.interestType;
     _repayment = e.repaymentType;
+    _period = e.ratePeriod;
     if (e.interestRate != null) _rate.text = '${e.interestRate}';
   }
 
@@ -138,6 +139,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
           interestRate: _limited || _effectiveInterest == InterestType.none
               ? null
               : double.parse(_rate.text.trim()),
+          ratePeriod: _limited ? null : _period,
           repaymentType: _limited
               ? null
               : (_borrowed ? _repayment : RepaymentType.flexible),
@@ -166,6 +168,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
         interestRate: _effectiveInterest == InterestType.none
             ? null
             : double.parse(_rate.text.trim()),
+        ratePeriod: _period,
         repaymentType: _borrowed ? _repayment : RepaymentType.flexible,
         createdAt: now,
         date: _date,
@@ -244,7 +247,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
                 ),
               ),
             if (!_limited) const SizedBox(height: 16),
-            if (_borrowed && !_limited) ...[
+            if (!_limited) ...[
               Text('Interest', style: Theme.of(context).textTheme.labelLarge),
               const SizedBox(height: 8),
               SegmentedButton<InterestType>(
@@ -264,27 +267,53 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
                     decimal: true,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'Interest rate (% per year)',
+                    labelText: _interestType == InterestType.flat
+                        ? 'Interest (% of amount)'
+                        : 'Interest rate (% per '
+                              '${_period == RatePeriod.month ? 'month' : 'year'})',
                     suffixText: '%',
                     errorText: _errors.rate,
                   ),
                 ),
+                if (_interestType != InterestType.flat) ...[
+                  const SizedBox(height: 12),
+                  SegmentedButton<RatePeriod>(
+                    segments: const [
+                      ButtonSegment(
+                        value: RatePeriod.year,
+                        label: Text('Per year'),
+                      ),
+                      ButtonSegment(
+                        value: RatePeriod.month,
+                        label: Text('Per month'),
+                      ),
+                    ],
+                    selected: {_period},
+                    onSelectionChanged: (s) =>
+                        setState(() => _period = s.first),
+                  ),
+                ],
               ],
               const SizedBox(height: 16),
-              Text('Repayment', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final r in RepaymentType.values)
-                    ChoiceChip(
-                      label: Text(repaymentLabel(r)),
-                      selected: _repayment == r,
-                      onSelected: (_) => setState(() => _repayment = r),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              if (_borrowed) ...[
+                Text(
+                  'Repayment',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final r in RepaymentType.values)
+                      ChoiceChip(
+                        label: Text(repaymentLabel(r)),
+                        selected: _repayment == r,
+                        onSelected: (_) => setState(() => _repayment = r),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
             ],
             Row(
               children: [

@@ -371,9 +371,12 @@ void main() {
       );
     }
 
-    testWidgets('interest controls appear only for Borrowed', (tester) async {
+    testWidgets('interest shows for both; repayment only for Borrowed', (
+      tester,
+    ) async {
       await pumpApp(tester, const AddEntryScreen());
-      expect(find.text('Interest'), findsNothing);
+      expect(find.text('Interest'), findsOneWidget);
+      expect(find.text('Repayment'), findsNothing);
       await tester.tap(find.text('Borrowed'));
       await tester.pumpAndSettle();
       expect(find.text('Interest'), findsOneWidget);
@@ -383,9 +386,17 @@ void main() {
       await tester.tap(find.text('Simple'));
       await tester.pumpAndSettle();
       expect(field('Interest rate (% per year)'), findsOneWidget);
+      await tester.tap(find.text('Per month'));
+      await tester.pumpAndSettle();
+      expect(field('Interest rate (% per month)'), findsOneWidget);
+      await tester.tap(find.text('Flat'));
+      await tester.pumpAndSettle();
+      expect(field('Interest (% of amount)'), findsOneWidget);
+      expect(find.text('Per month'), findsNothing);
       await tester.tap(find.text('Lent'));
       await tester.pumpAndSettle();
-      expect(find.text('Interest'), findsNothing);
+      expect(find.text('Interest'), findsOneWidget);
+      expect(find.text('Repayment'), findsNothing);
     });
 
     testWidgets('a rate is required when interest is chosen', (tester) async {
@@ -401,7 +412,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('yearly rate above 0'), findsOneWidget);
+      expect(find.textContaining('rate above 0'), findsOneWidget);
       expect(
         (await db.collection('users/u1/transactions').get()).docs,
         isEmpty,

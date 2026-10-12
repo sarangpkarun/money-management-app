@@ -77,6 +77,7 @@ class TransactionRepository {
     String? personName,
     InterestType? interestType,
     double? interestRate,
+    RatePeriod? ratePeriod,
     RepaymentType? repaymentType,
   }) {
     final ref = _paths.transactions.doc(id);
@@ -106,6 +107,7 @@ class TransactionRepository {
         dueDate: newDue,
         interestType: newInterestType,
         interestRate: newRate,
+        ratePeriod: ratePeriod ?? current.ratePeriod,
         repaymentType: repaymentType ?? current.repaymentType,
         createdAt: current.createdAt,
         date: newDate,
@@ -130,6 +132,7 @@ class TransactionRepository {
         'totalAmount': newTotal.paise,
         'interestType': newInterestType.name,
         'interestRate': newRate,
+        'ratePeriod': edited.ratePeriod.name,
         'repaymentType': edited.repaymentType.name,
         'balance': (left.isNegative ? Money.zero : left).paise,
         'status': status.name,
@@ -162,6 +165,7 @@ class TransactionRepository {
       dueDate: t.dueDate,
       interestType: t.interestType,
       interestRate: t.interestRate,
+      ratePeriod: t.ratePeriod,
       repaymentType: t.repaymentType,
       createdAt: t.createdAt,
       lastActivityAt: _now(),

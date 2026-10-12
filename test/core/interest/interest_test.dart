@@ -23,6 +23,72 @@ void main() {
       to: to,
     );
 
+    test('flat: a one-off percentage of the principal, whatever the time', () {
+      expect(acc(InterestType.flat, 5, start), Money.fromRupees(500));
+      expect(acc(InterestType.flat, 5, oneYear), Money.fromRupees(500));
+    });
+
+    test('simple per month: 2% a month for a year is 2,400', () {
+      expect(
+        interestAccrued(
+          principal: Money.fromRupees(10000),
+          type: InterestType.simple,
+          annualRatePercent: 2,
+          period: RatePeriod.month,
+          from: start,
+          to: oneYear,
+        ),
+        Money.fromRupees(2400),
+      );
+    });
+
+    test('compound per month equals compound yearly at 12x the rate', () {
+      expect(
+        interestAccrued(
+          principal: Money.fromRupees(10000),
+          type: InterestType.compound,
+          annualRatePercent: 1,
+          period: RatePeriod.month,
+          from: start,
+          to: oneYear,
+        ),
+        acc(InterestType.compound, 12, oneYear),
+      );
+    });
+
+    test('flat: a one-off percentage, whatever the duration', () {
+      expect(acc(InterestType.flat, 5, start), Money.fromRupees(500));
+      expect(acc(InterestType.flat, 5, oneYear), Money.fromRupees(500));
+    });
+
+    test('monthly rate: 2% a month simple is 2,400 over a year', () {
+      expect(
+        interestAccrued(
+          principal: Money.fromRupees(10000),
+          type: InterestType.simple,
+          annualRatePercent: 2,
+          period: RatePeriod.month,
+          from: start,
+          to: oneYear,
+        ),
+        Money.fromRupees(2400),
+      );
+    });
+
+    test('monthly compound equals yearly compound at rate x 12', () {
+      expect(
+        interestAccrued(
+          principal: Money.fromRupees(10000),
+          type: InterestType.compound,
+          annualRatePercent: 1,
+          period: RatePeriod.month,
+          from: start,
+          to: oneYear,
+        ),
+        acc(InterestType.compound, 12, oneYear),
+      );
+    });
+
     test('simple: 10,000 at 12% for a year is exactly 1,200', () {
       expect(acc(InterestType.simple, 12, oneYear), Money.fromRupees(1200));
     });

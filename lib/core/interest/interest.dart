@@ -10,6 +10,9 @@ DateTime _dayOnly(DateTime d) => DateTime.utc(d.year, d.month, d.day);
 /// Interest earned on [principal] between [from] and [to] (whole days, a year
 /// being 365 days), rounded to the nearest paisa.
 ///
+/// Flat: a one-off P * R, whatever the duration. Simple: P * R * T.
+/// With [period] `month` the rate is per month (simple and compound only).
+///
 /// Simple: P * R * T. Compound: monthly compounding, P * ((1 + R/12)^(12T) - 1)
 /// (product doc 8.5). [annualRatePercent] is e.g. 12 for 12% a year.
 Money interestAccrued({
@@ -18,17 +21,21 @@ Money interestAccrued({
   required double annualRatePercent,
   required DateTime from,
   required DateTime to,
+  RatePeriod period = RatePeriod.year,
 }) {
   if (type == InterestType.none || annualRatePercent <= 0) return Money.zero;
+  if (type == InterestType.flat) {
+    return Money((principal.paise * annualRatePercent / 100).round());
+  }
   final days = _dayOnly(to).difference(_dayOnly(from)).inDays;
   if (days <= 0) return Money.zero;
   final years = days / 365;
-  final rate = annualRatePercent / 100;
+  final rate = annualRatePercent * (period == RatePeriod.month ? 12 : 1) / 100;
   final paise = switch (type) {
     InterestType.simple => principal.paise * rate * years,
     InterestType.compound =>
       principal.paise * (math.pow(1 + rate / 12, 12 * years) - 1),
-    InterestType.none => 0.0,
+    InterestType.flat || InterestType.none => 0.0,
   };
   return Money(paise.round());
 }
@@ -41,6 +48,7 @@ Money amountDueAt(MoneyTransaction t, DateTime at) =>
       principal: t.totalAmount,
       type: t.interestType,
       annualRatePercent: t.interestRate ?? 0,
+      period: t.ratePeriod,
       from: t.entryDate,
       to: at,
     );

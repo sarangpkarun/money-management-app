@@ -212,7 +212,8 @@ void main() {
       await tester.tap(find.text('Money I gave'));
       await tester.pumpAndSettle();
       expect(find.text('Add entry'), findsOneWidget);
-      expect(find.text('Interest'), findsNothing); // only for Borrowed
+      expect(find.text('Interest'), findsOneWidget);
+      expect(find.text('Repayment'), findsNothing); // only for Borrowed
     });
 
     testWidgets('"Money I borrowed" opens Add entry on Borrowed', (

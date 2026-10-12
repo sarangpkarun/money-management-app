@@ -30,7 +30,7 @@ EntryErrors validateEntry({
   if (interestType != InterestType.none) {
     final rate = double.tryParse(rateText.trim());
     if (rate == null || rate <= 0 || rate > 100) {
-      rateError = 'Enter a yearly rate above 0 and up to 100';
+      rateError = 'Enter a rate above 0 and up to 100';
     }
   }
   return EntryErrors(
@@ -83,7 +83,16 @@ String interestTypeLabel(InterestType t) => switch (t) {
   InterestType.none => 'No interest',
   InterestType.simple => 'Simple',
   InterestType.compound => 'Compound',
+  InterestType.flat => 'Flat',
 };
+
+/// e.g. "Simple interest at 2% a month", "Flat interest of 5%".
+String interestSummary(MoneyTransaction t) {
+  final rate = formatRate(t.interestRate ?? 0);
+  if (t.interestType == InterestType.flat) return 'Flat interest of $rate%';
+  final per = t.ratePeriod == RatePeriod.month ? 'a month' : 'a year';
+  return '${interestTypeLabel(t.interestType)} interest at $rate% $per';
+}
 
 String repaymentLabel(RepaymentType t) => switch (t) {
   RepaymentType.oneTime => 'One-time',
