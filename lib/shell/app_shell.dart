@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../home/home_screen.dart';
+import '../log/calendar_screen.dart';
 import '../people/people_screen.dart';
 import '../reminders/alarm_providers.dart';
 import '../reminders/reminders_screen.dart';
-import '../settings/settings_screen.dart';
 import 'add_entry_sheet.dart';
 
 /// The signed-in app: five destinations along the bottom. The middle "+" does
@@ -45,7 +45,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           HomeScreen(),
           PeopleScreen(),
           RemindersScreen(),
-          SettingsScreen(),
+          CalendarScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -72,9 +72,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'Reminders',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month),
+            label: 'Calendar',
           ),
         ],
       ),

@@ -104,7 +104,7 @@ void main() {
   group('navigation', () {
     testWidgets('has the five destinations and starts on Home', (tester) async {
       await pumpShell(tester);
-      for (final label in ['Home', 'People', 'Add', 'Reminders', 'Settings']) {
+      for (final label in ['Home', 'People', 'Add', 'Reminders', 'Calendar']) {
         expect(tab(label), findsOneWidget, reason: label);
       }
       expect(find.text('Hello, Sarang'), findsOneWidget);
@@ -120,9 +120,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Nothing coming up'), findsOneWidget);
 
-      await tester.tap(tab('Settings'));
+      await tester.tap(tab('Calendar'));
       await tester.pumpAndSettle();
-      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('Calendar log'), findsOneWidget);
 
       await tester.tap(tab('Home'));
       await tester.pumpAndSettle();
@@ -296,7 +296,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await pumpShell(tester);
-      await tester.tap(tab('Settings'));
+      await tester.tap(find.byTooltip('Settings'));
       await tester.pumpAndSettle();
     }
 
