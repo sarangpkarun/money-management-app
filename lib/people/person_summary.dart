@@ -80,7 +80,10 @@ List<PersonSummary> applyFilters(
     if (q.isNotEmpty) {
       final name = s.person.name.toLowerCase();
       final phone = (s.person.phone ?? '').toLowerCase();
-      if (!name.contains(q) && !phone.contains(q)) return false;
+      final email = (s.person.email ?? '').toLowerCase();
+      if (!name.contains(q) && !phone.contains(q) && !email.contains(q)) {
+        return false;
+      }
     }
     return switch (filter) {
       PeopleFilter.all => true,

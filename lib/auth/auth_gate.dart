@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../trips/trip_providers.dart';
 import 'auth_providers.dart';
 import 'login_screen.dart';
 import 'verify_email_screen.dart';
@@ -24,6 +25,8 @@ class AuthGate extends ConsumerWidget {
         if (!user.emailVerified) return VerifyEmailScreen(user: user);
         // Fire-and-forget: creates the profile doc; failures must not block use.
         ref.watch(profileBootstrapProvider);
+        // Accepts trip invites sent to this email; failures must not block use.
+        ref.watch(claimInvitesProvider);
         return home;
       },
     );

@@ -20,6 +20,7 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.person?.name);
   late final _phone = TextEditingController(text: widget.person?.phone);
+  late final _email = TextEditingController(text: widget.person?.email);
   late final _notes = TextEditingController(text: widget.person?.notes);
   bool _busy = false;
 
@@ -29,6 +30,7 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
   void dispose() {
     _name.dispose();
     _phone.dispose();
+    _email.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -44,6 +46,8 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
 
   String? _blank(String s) => s.trim().isEmpty ? null : s.trim();
 
+  String? get _emailValue => _blank(_email.text)?.toLowerCase();
+
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
@@ -54,6 +58,7 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
         Person(
           name: _name.text.trim(),
           phone: _blank(_phone.text),
+          email: _emailValue,
           notes: _blank(_notes.text),
           createdAt: DateTime.now(),
         ),
@@ -64,6 +69,7 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
           id: existing.id,
           name: _name.text.trim(),
           phone: _blank(_phone.text),
+          email: _emailValue,
           notes: _blank(_notes.text),
           photoUrl: existing.photoUrl,
           createdAt: existing.createdAt,
@@ -152,6 +158,21 @@ class _PersonFormScreenState extends ConsumerState<PersonFormScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Phone (optional)',
                 ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Email (optional)',
+                  helperText: 'Needed to add them to a trip',
+                ),
+                validator: (v) {
+                  final t = (v ?? '').trim();
+                  if (t.isEmpty) return null;
+                  return isValidEmail(t) ? null : 'Enter a valid email';
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(

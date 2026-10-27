@@ -10,6 +10,7 @@ import '../people/people_providers.dart';
 import '../settings/profile_screen.dart';
 import '../settings/settings_screen.dart';
 import '../transactions/add_entry_screen.dart';
+import '../people/people_screen.dart';
 import '../transactions/entries_screen.dart';
 import '../transactions/entry_detail_screen.dart';
 import '../transactions/entry_form_logic.dart';
@@ -42,6 +43,11 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(name.isEmpty ? 'Hello' : 'Hello, $name'),
         actions: [
+          IconButton(
+            tooltip: 'People',
+            icon: const Icon(Icons.people_outline),
+            onPressed: () => _open(context, const PeopleScreen()),
+          ),
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),

@@ -7,6 +7,7 @@ import 'log_repository.dart';
 import 'payment_repository.dart';
 import 'people_repository.dart';
 import 'reminder_repository.dart';
+import 'trip_repository.dart';
 import 'transaction_repository.dart';
 import 'user_repository.dart';
 
@@ -61,4 +62,18 @@ final currentProfileProvider = StreamProvider<AppUser?>(
 final reminderRepositoryProvider = Provider(
   (ref) =>
       ReminderRepository(ref.watch(firestoreProvider), ref.watch(uidProvider)),
+);
+
+/// The signed-in user's email, lowercased; empty if there is none.
+final emailProvider = Provider<String>((ref) {
+  ref.watch(_signedInUidProvider);
+  return (FirebaseAuth.instance.currentUser?.email ?? '').toLowerCase();
+});
+
+final tripRepositoryProvider = Provider(
+  (ref) => TripRepository(
+    ref.watch(firestoreProvider),
+    ref.watch(uidProvider),
+    ref.watch(emailProvider),
+  ),
 );
