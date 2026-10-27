@@ -19,6 +19,7 @@ class TripStop {
     this.date,
     this.place,
     this.notes,
+    this.order,
     required this.createdAt,
   });
 
@@ -28,7 +29,22 @@ class TripStop {
   final DateTime? date;
   final String? place;
   final String? notes;
+
+  /// Position on the roadmap; lower comes first. Null on stops saved before
+  /// ordering existed, which fall back to date order.
+  final double? order;
   final DateTime createdAt;
+
+  TripStop withOrder(double? o) => TripStop(
+    id: id,
+    title: title,
+    type: type,
+    date: date,
+    place: place,
+    notes: notes,
+    order: o,
+    createdAt: createdAt,
+  );
 
   Map<String, dynamic> toMap() => {
     'title': title,
@@ -36,6 +52,7 @@ class TripStop {
     'date': date == null ? null : Timestamp.fromDate(date!),
     'place': place,
     'notes': notes,
+    'order': order,
     'createdAt': Timestamp.fromDate(createdAt),
   };
 
@@ -46,6 +63,7 @@ class TripStop {
     date: (m['date'] as Timestamp?)?.toDate(),
     place: m['place'] as String?,
     notes: m['notes'] as String?,
+    order: (m['order'] as num?)?.toDouble(),
     createdAt: (m['createdAt'] as Timestamp).toDate(),
   );
 }
