@@ -6,7 +6,7 @@ import '../core/models/trip.dart';
 import '../core/models/trip_stop.dart';
 import '../core/ui/format.dart';
 import 'trip_providers.dart';
-import 'trip_roadmap_tab.dart';
+import 'trip_colors.dart';
 
 /// Add or edit a stop on the roadmap.
 class TripStopFormScreen extends ConsumerStatefulWidget {
@@ -157,7 +157,14 @@ class _TripStopFormScreenState extends ConsumerState<TripStopFormScreen> {
                 children: [
                   for (final t in StopType.values)
                     ChoiceChip(
-                      avatar: Icon(stopIcon(t), size: 18),
+                      avatar: Icon(
+                        stopIcon(t),
+                        size: 18,
+                        color: _type == t
+                            ? null
+                            : categoryForeground(context, stopTypeColor(t)),
+                      ),
+                      selectedColor: categoryBackground(stopTypeColor(t)),
                       label: Text(stopTypeLabel(t)),
                       selected: _type == t,
                       onSelected: (_) => setState(() => _type = t),
