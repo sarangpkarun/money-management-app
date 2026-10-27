@@ -13,6 +13,85 @@ service cloud.firestore {
       allow read, write: if isVerifiedOwner(uid);
     }
 
+    // Trips are shared, so they live outside users/{uid}. Membership is kept in
+    // three lists on the trip: memberEmails (everyone invited, so an invitee
+    // can find the trip), memberUids (people who have accepted) and editorUids
+    // (accepted members who may change things; viewers are left out).
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function myKey() {
+      return myEmail().replace('\\.', ',');
+    }
+
+    function tripDoc(tripId) {
+      return get(/databases/$(database)/documents/trips/$(tripId)).data;
+    }
+
+    function isMember(trip) {
+      return signedIn() && request.auth.uid in trip.memberUids;
+    }
+
+    function isEditor(trip) {
+      return signedIn() && request.auth.uid in trip.editorUids;
+    }
+
+    function isOwner(trip) {
+      return signedIn() && request.auth.uid == trip.ownerUid;
+    }
+
+    // An invitee accepting: adds only their own uid (and to editorUids only if
+    // the invite was for an editor) and touches nothing else.
+    function isClaim() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return signedIn()
+          && myEmail() in before.memberEmails
+          && after.diff(before).affectedKeys().hasOnly(['members', 'memberUids', 'editorUids'])
+          && after.memberUids.toSet().difference(before.memberUids.toSet()).hasOnly([request.auth.uid])
+          && after.editorUids.toSet().difference(before.editorUids.toSet())
+              .hasOnly(before.members[myKey()].role == 'editor' ? [request.auth.uid] : [])
+          && before.memberUids.toSet().difference(after.memberUids.toSet()).size() == 0
+          && before.editorUids.toSet().difference(after.editorUids.toSet()).size() == 0;
+    }
+
+    match /trips/{tripId} {
+      allow read: if signedIn()
+          && (request.auth.uid in resource.data.memberUids
+              || myEmail() in resource.data.memberEmails);
+
+      allow create: if signedIn()
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.memberUids == [request.auth.uid]
+          && request.resource.data.editorUids == [request.auth.uid];
+
+      // The owner may change anything but the owner; editors only the plain
+      // details; invitees may only accept their own invite.
+      allow update: if isOwner(resource.data)
+              && request.resource.data.ownerUid == resource.data.ownerUid
+          || isEditor(resource.data)
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['name', 'description', 'startDate', 'endDate'])
+          || isClaim();
+
+      allow delete: if isOwner(resource.data);
+
+      match /stops/{id} {
+        allow read: if isMember(tripDoc(tripId));
+        allow write: if isEditor(tripDoc(tripId));
+      }
+
+      match /expenses/{id} {
+        allow read: if isMember(tripDoc(tripId));
+        allow write: if isEditor(tripDoc(tripId));
+      }
+    }
+
     // Everything else is denied by default.
   }
 }

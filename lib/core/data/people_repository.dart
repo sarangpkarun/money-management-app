@@ -91,6 +91,7 @@ class PeopleRepository {
           p.notes!.trim(),
     ];
     final phone = _firstNonBlank([keep.phone, ...removed.map((p) => p.phone)]);
+    final email = _firstNonBlank([keep.email, ...removed.map((p) => p.email)]);
     final photo = _firstNonBlank([
       keep.photoUrl,
       ...removed.map((p) => p.photoUrl),
@@ -98,6 +99,7 @@ class PeopleRepository {
     final finish = _paths.db.batch();
     finish.update(_paths.people.doc(keepId), {
       'phone': phone,
+      'email': email,
       'notes': notes.isEmpty ? null : notes.join('\n'),
       'photoUrl': photo,
     });

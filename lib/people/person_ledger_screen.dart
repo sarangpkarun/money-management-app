@@ -193,6 +193,7 @@ class _Header extends StatelessWidget {
       label = 'Owes you';
     }
     final phone = summary.person.phone;
+    final email = summary.person.email;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -208,6 +209,7 @@ class _Header extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 if (phone != null) Text(phone),
+                if (email != null) Text(email),
                 if (summary.hasOverdue)
                   Text(
                     'Overdue',

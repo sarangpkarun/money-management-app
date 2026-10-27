@@ -78,7 +78,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Add person'));
     await tester.pumpAndSettle();
     expect(find.text('Add person'), findsWidgets);
-    expect(find.byType(TextFormField), findsNWidgets(3));
+    expect(find.byType(TextFormField), findsNWidgets(4));
   });
 
   testWidgets('shows people with net amounts and overdue marker', (

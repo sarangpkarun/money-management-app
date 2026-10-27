@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../home/home_screen.dart';
 import '../log/calendar_screen.dart';
-import '../people/people_screen.dart';
 import '../reminders/alarm_providers.dart';
 import '../reminders/reminders_screen.dart';
+import '../trips/trips_screen.dart';
 import 'add_entry_sheet.dart';
 
 /// The signed-in app: five destinations along the bottom. The middle "+" does
@@ -43,7 +43,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         index: _stackIndex,
         children: const [
           HomeScreen(),
-          PeopleScreen(),
+          TripsScreen(),
           RemindersScreen(),
           CalendarScreen(),
         ],
@@ -58,9 +58,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'People',
+            icon: Icon(Icons.luggage_outlined),
+            selectedIcon: Icon(Icons.luggage),
+            label: 'Trips',
           ),
           NavigationDestination(
             icon: Icon(Icons.add_circle, size: 36),

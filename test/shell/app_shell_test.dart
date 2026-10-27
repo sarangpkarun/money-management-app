@@ -7,6 +7,7 @@ import 'package:money_manager/auth/auth_providers.dart';
 import 'package:money_manager/auth/auth_repository.dart';
 import 'package:money_manager/core/data/payment_repository.dart';
 import 'package:money_manager/core/data/people_repository.dart';
+import 'package:money_manager/core/data/trip_repository.dart';
 import 'package:money_manager/core/data/providers.dart';
 import 'package:money_manager/core/models/reminder.dart';
 import 'package:money_manager/core/data/reminder_repository.dart';
@@ -50,6 +51,11 @@ void main() {
       ProviderScope(
         overrides: [
           peopleRepositoryProvider.overrideWithValue(people),
+          uidProvider.overrideWithValue('u1'),
+          emailProvider.overrideWithValue('a@b.com'),
+          tripRepositoryProvider.overrideWithValue(
+            TripRepository(db, 'u1', 'a@b.com'),
+          ),
           alarmGatewayProvider.overrideWithValue(gateway),
           reminderRepositoryProvider.overrideWithValue(
             ReminderRepository(db, 'u1'),
@@ -104,7 +110,7 @@ void main() {
   group('navigation', () {
     testWidgets('has the five destinations and starts on Home', (tester) async {
       await pumpShell(tester);
-      for (final label in ['Home', 'People', 'Add', 'Reminders', 'Calendar']) {
+      for (final label in ['Home', 'Trips', 'Add', 'Reminders', 'Calendar']) {
         expect(tab(label), findsOneWidget, reason: label);
       }
       expect(find.text('Hello, Sarang'), findsOneWidget);
@@ -112,9 +118,9 @@ void main() {
 
     testWidgets('switches between tabs', (tester) async {
       await pumpShell(tester);
-      await tester.tap(tab('People'));
+      await tester.tap(tab('Trips'));
       await tester.pumpAndSettle();
-      expect(find.text('No people yet'), findsOneWidget);
+      expect(find.text('No trips yet'), findsOneWidget);
 
       await tester.tap(tab('Reminders'));
       await tester.pumpAndSettle();
@@ -129,33 +135,16 @@ void main() {
       expect(find.text('Hello, Sarang'), findsOneWidget);
     });
 
-    testWidgets('tabs keep their state when you switch away and back', (
+    testWidgets('People, Settings and Profile are in the Home app bar', (
       tester,
     ) async {
-      await entry('Asha', TransactionType.lent, 100);
-      await entry('Ravi', TransactionType.lent, 100);
       await pumpShell(tester);
-      await tester.tap(tab('People'));
+      for (final tip in ['People', 'Settings', 'Profile']) {
+        expect(find.byTooltip(tip), findsOneWidget, reason: tip);
+      }
+      await tester.tap(find.byTooltip('People'));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Search name or phone'),
-        'rav',
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Asha'), findsNothing);
-
-      await tester.tap(tab('Home'));
-      await tester.pumpAndSettle();
-      await tester.tap(tab('People'));
-      await tester.pumpAndSettle();
-      final editable = tester.widget<EditableText>(
-        find.descendant(
-          of: find.widgetWithText(TextField, 'Search name or phone'),
-          matching: find.byType(EditableText),
-        ),
-      );
-      expect(editable.controller.text, 'rav');
-      expect(find.text('Asha'), findsNothing);
+      expect(find.text('No people yet'), findsOneWidget);
     });
   });
 
