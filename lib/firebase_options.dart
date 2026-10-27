@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -48,6 +45,15 @@ class DefaultFirebaseOptions {
         );
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBE_DVafjSQZPymDPem5reedT5omJETo7g',
+    appId: '1:29079874947:web:bd7bab9e92b59c13e31ab6',
+    messagingSenderId: '29079874947',
+    projectId: 'money-management-app-ab883',
+    authDomain: 'money-management-app-ab883.firebaseapp.com',
+    storageBucket: 'money-management-app-ab883.firebasestorage.app',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBAZx7kgATGDWFwHru150osfrQjLYY3sjM',

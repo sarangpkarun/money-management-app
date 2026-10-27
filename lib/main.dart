@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,6 +38,7 @@ class _MoneyManagerAppState extends ConsumerState<MoneyManagerApp> {
   }
 
   Future<void> _setup() async {
+    if (kIsWeb) return; // no phone alarms in the browser
     AlarmService.onAlarmOpened = _showAlarm;
     await AlarmService.init();
     final launched = AlarmService.launchedBy;
