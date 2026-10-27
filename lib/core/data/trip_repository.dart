@@ -142,6 +142,15 @@ class TripRepository {
             .map((d) => TripStop.fromMap(d.id, d.data()))
             .toList();
         list.sort((a, b) {
+          final ao = a.order, bo = b.order;
+          if (ao != null && bo != null) {
+            final c = ao.compareTo(bo);
+            if (c != 0) return c;
+          } else if (ao != null) {
+            return -1;
+          } else if (bo != null) {
+            return 1;
+          }
           final ad = a.date, bd = b.date;
           if (ad != null && bd != null) {
             final c = ad.compareTo(bd);
@@ -159,11 +168,52 @@ class TripRepository {
   Future<void> addStop(String tripId, TripStop s) =>
       _stops(tripId).add(s.toMap());
 
+  /// Adds [s] at [index] in [current] (the stops as displayed). Stops saved
+  /// before ordering existed are numbered first so the new one can sit between
+  /// two neighbours.
+  Future<void> addStopAt(
+    String tripId,
+    TripStop s,
+    List<TripStop> current,
+    int index,
+  ) async {
+    var list = current;
+    if (list.any((x) => x.order == null)) {
+      final batch = _db.batch();
+      list = [
+        for (var i = 0; i < current.length; i++)
+          current[i].withOrder((i + 1) * 1000.0),
+      ];
+      for (final x in list) {
+        batch.update(_stops(tripId).doc(x.id), {'order': x.order});
+      }
+      await batch.commit();
+    }
+    final at = index.clamp(0, list.length);
+    final prev = at > 0 ? list[at - 1].order! : null;
+    final next = at < list.length ? list[at].order! : null;
+    final order = switch ((prev, next)) {
+      (null, null) => 1000.0,
+      (final p?, null) => p + 1000,
+      (null, final n?) => n - 1000,
+      (final p?, final n?) => (p + n) / 2,
+    };
+    await _stops(tripId).add(s.withOrder(order).toMap());
+  }
+
   Future<void> updateStop(String tripId, TripStop s) =>
       _stops(tripId).doc(s.id).update(s.toMap());
 
-  Future<void> deleteStop(String tripId, String id) =>
-      _stops(tripId).doc(id).delete();
+  /// Deletes the stop; its expenses stay on the trip as general ones.
+  Future<void> deleteStop(String tripId, String id) async {
+    final spent = await _expenses(tripId).where('stopId', isEqualTo: id).get();
+    final batch = _db.batch();
+    for (final d in spent.docs) {
+      batch.update(d.reference, {'stopId': null});
+    }
+    batch.delete(_stops(tripId).doc(id));
+    await batch.commit();
+  }
 
   // Expenses
 

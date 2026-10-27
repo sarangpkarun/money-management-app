@@ -5,14 +5,23 @@ import '../core/data/providers.dart';
 import '../core/models/trip.dart';
 import '../core/models/trip_stop.dart';
 import '../core/ui/format.dart';
+import 'trip_providers.dart';
 import 'trip_roadmap_tab.dart';
 
 /// Add or edit a stop on the roadmap.
 class TripStopFormScreen extends ConsumerStatefulWidget {
-  const TripStopFormScreen({super.key, required this.trip, this.existing});
+  const TripStopFormScreen({
+    super.key,
+    required this.trip,
+    this.existing,
+    this.insertIndex,
+  });
 
   final Trip trip;
   final TripStop? existing;
+
+  /// Where a new stop goes on the roadmap; null puts it at the end.
+  final int? insertIndex;
 
   @override
   ConsumerState<TripStopFormScreen> createState() => _TripStopFormScreenState();
@@ -61,13 +70,22 @@ class _TripStopFormScreenState extends ConsumerState<TripStopFormScreen> {
       date: _date,
       place: _blank(_place.text),
       notes: _blank(_notes.text),
+      order: widget.existing?.order,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
     try {
       if (_editing) {
         await repo.updateStop(widget.trip.id, stop);
       } else {
-        await repo.addStop(widget.trip.id, stop);
+        final current = await ref.read(
+          tripStopsProvider(widget.trip.id).future,
+        );
+        await repo.addStopAt(
+          widget.trip.id,
+          stop,
+          current,
+          widget.insertIndex ?? current.length,
+        );
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -80,6 +98,32 @@ class _TripStopFormScreenState extends ConsumerState<TripStopFormScreen> {
   }
 
   Future<void> _delete() async {
+    final spent = (await ref.read(
+      tripExpensesProvider(widget.trip.id).future,
+    )).where((e) => e.stopId == widget.existing!.id).length;
+    if (spent > 0 && mounted) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Delete this stop?'),
+          content: Text(
+            '$spent expense${spent == 1 ? '' : 's'} will stay on the trip '
+            'as general expenses.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
     await ref
         .read(tripRepositoryProvider)
         .deleteStop(widget.trip.id, widget.existing!.id);

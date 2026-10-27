@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/data/providers.dart';
 import '../core/models/trip.dart';
 import '../core/models/trip_expense.dart';
+import '../core/models/trip_stop.dart';
 import '../core/money/money.dart';
 import '../core/ui/format.dart';
 import 'split_logic.dart';
@@ -12,10 +13,18 @@ import 'trip_providers.dart';
 /// Add or edit an expense: what, how much, who paid, and how it is shared.
 /// The split can be changed any time by editing the expense again.
 class TripExpenseFormScreen extends ConsumerStatefulWidget {
-  const TripExpenseFormScreen({super.key, required this.trip, this.existing});
+  const TripExpenseFormScreen({
+    super.key,
+    required this.trip,
+    this.existing,
+    this.stop,
+  });
 
   final Trip trip;
   final TripExpense? existing;
+
+  /// The roadmap point a new expense is added for.
+  final TripStop? stop;
 
   @override
   ConsumerState<TripExpenseFormScreen> createState() =>
@@ -24,11 +33,15 @@ class TripExpenseFormScreen extends ConsumerStatefulWidget {
 
 class _TripExpenseFormScreenState extends ConsumerState<TripExpenseFormScreen> {
   final _form = GlobalKey<FormState>();
-  late final _title = TextEditingController(text: widget.existing?.title);
+  late final _title = TextEditingController(
+    text: widget.existing?.title ?? widget.stop?.title,
+  );
   late final _amount = TextEditingController(
     text: widget.existing == null ? '' : plainAmount(widget.existing!.amount),
   );
-  late final _category = TextEditingController(text: widget.existing?.category);
+  late String? _category =
+      widget.existing?.category ??
+      (widget.stop == null ? null : stopTypeLabel(widget.stop!.type));
   late DateTime _date = widget.existing?.date ?? DateTime.now();
   late SplitMode _mode = widget.existing?.mode ?? SplitMode.equal;
   String? _paidBy;
@@ -53,7 +66,7 @@ class _TripExpenseFormScreenState extends ConsumerState<TripExpenseFormScreen> {
         (widget.trip.memberByEmail(me) != null
             ? me
             : _members.first.email.toLowerCase());
-    _stopId = e?.stopId;
+    _stopId = e?.stopId ?? widget.stop?.id;
     _selected = e == null
         ? {for (final m in _members) m.email.toLowerCase()}
         : e.shares.keys.toSet();
@@ -77,7 +90,6 @@ class _TripExpenseFormScreenState extends ConsumerState<TripExpenseFormScreen> {
   void dispose() {
     _title.dispose();
     _amount.dispose();
-    _category.dispose();
     for (final c in _inputs.values) {
       c.dispose();
     }
@@ -189,14 +201,13 @@ class _TripExpenseFormScreenState extends ConsumerState<TripExpenseFormScreen> {
       _busy = true;
       _error = null;
     });
-    final cat = _category.text.trim();
     final expense = TripExpense(
       id: widget.existing?.id ?? '',
       title: _title.text.trim(),
       amount: _total!,
       paidBy: _paidBy!,
       date: _date,
-      category: cat.isEmpty ? null : cat,
+      category: _category,
       stopId: _stopId,
       mode: _mode,
       shares: shares,
@@ -248,6 +259,36 @@ class _TripExpenseFormScreenState extends ConsumerState<TripExpenseFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (stops.isNotEmpty) ...[
+                DropdownButtonFormField<String?>(
+                  initialValue: stops.any((s) => s.id == _stopId)
+                      ? _stopId
+                      : null,
+                  decoration: const InputDecoration(labelText: 'Roadmap point'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('General (no point)'),
+                    ),
+                    for (final s in stops)
+                      DropdownMenuItem(value: s.id, child: Text(s.title)),
+                  ],
+                  onChanged: (v) => setState(() {
+                    final prev = stops.where((s) => s.id == _stopId);
+                    final next = stops.where((s) => s.id == v);
+                    _stopId = v;
+                    // Follow the point's name unless the title was changed.
+                    if (next.isNotEmpty &&
+                        (_title.text.trim().isEmpty ||
+                            (prev.isNotEmpty &&
+                                _title.text == prev.first.title))) {
+                      _title.text = next.first.title;
+                      _category = stopTypeLabel(next.first.type);
+                    }
+                  }),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
                 controller: _title,
                 textCapitalization: TextCapitalization.sentences,
@@ -289,29 +330,23 @@ class _TripExpenseFormScreenState extends ConsumerState<TripExpenseFormScreen> {
                 icon: const Icon(Icons.event),
                 label: Text(formatShortDate(_date)),
               ),
-              if (stops.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String?>(
-                  initialValue: stops.any((s) => s.id == _stopId)
-                      ? _stopId
-                      : null,
-                  decoration: const InputDecoration(
-                    labelText: 'Roadmap stop (optional)',
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('None')),
-                    for (final s in stops)
-                      DropdownMenuItem(value: s.id, child: Text(s.title)),
-                  ],
-                  onChanged: (v) => setState(() => _stopId = v),
-                ),
-              ],
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _category,
-                decoration: const InputDecoration(
-                  labelText: 'Category (optional)',
-                ),
+              Text('Category', style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final c in {
+                    for (final t in StopType.values) stopTypeLabel(t),
+                    ?_category,
+                  })
+                    ChoiceChip(
+                      label: Text(c),
+                      selected: _category == c,
+                      onSelected: (on) =>
+                          setState(() => _category = on ? c : null),
+                    ),
+                ],
               ),
               const SizedBox(height: 24),
               Text('Split', style: Theme.of(context).textTheme.titleMedium),
