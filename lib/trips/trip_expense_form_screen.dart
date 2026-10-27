@@ -8,6 +8,7 @@ import '../core/models/trip_stop.dart';
 import '../core/money/money.dart';
 import '../core/ui/format.dart';
 import 'split_logic.dart';
+import 'trip_colors.dart';
 import 'trip_providers.dart';
 
 /// Add or edit an expense: what, how much, who paid, and how it is shared.
@@ -341,7 +342,13 @@ class _TripExpenseFormScreenState extends ConsumerState<TripExpenseFormScreen> {
                     ?_category,
                   })
                     ChoiceChip(
+                      avatar: Icon(
+                        categoryIcon(c),
+                        size: 18,
+                        color: categoryForeground(context, categoryColor(c)),
+                      ),
                       label: Text(c),
+                      selectedColor: categoryBackground(categoryColor(c)),
                       selected: _category == c,
                       onSelected: (on) =>
                           setState(() => _category = on ? c : null),

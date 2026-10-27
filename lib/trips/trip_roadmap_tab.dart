@@ -10,16 +10,9 @@ import '../core/data/providers.dart';
 import '../core/models/trip_expense.dart';
 import 'trip_expense_form_screen.dart';
 import 'trip_expenses_tab.dart';
+import 'trip_colors.dart';
 import 'trip_providers.dart';
 import 'trip_stop_form_screen.dart';
-
-IconData stopIcon(StopType t) => switch (t) {
-  StopType.stay => Icons.hotel_outlined,
-  StopType.travel => Icons.directions_bus_outlined,
-  StopType.food => Icons.restaurant_outlined,
-  StopType.activity => Icons.local_activity_outlined,
-  StopType.other => Icons.place_outlined,
-};
 
 /// The trip's route as a timeline: where you stay, travel, eat and visit, with
 /// what was spent at each stop.
@@ -131,6 +124,7 @@ class TripRoadmapTab extends ConsumerWidget {
               for (final e in mine)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: categoryAvatar(context, e.category),
                   title: Text(e.title),
                   subtitle: Text(
                     [
@@ -287,11 +281,14 @@ class _StopRow extends StatelessWidget {
                 ),
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: scheme.primaryContainer,
+                  backgroundColor: categoryBackground(stopTypeColor(stop.type)),
                   child: Icon(
                     stopIcon(stop.type),
                     size: 18,
-                    color: scheme.onPrimaryContainer,
+                    color: categoryForeground(
+                      context,
+                      stopTypeColor(stop.type),
+                    ),
                   ),
                 ),
                 Expanded(

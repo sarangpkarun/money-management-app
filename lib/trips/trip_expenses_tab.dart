@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/data/providers.dart';
 import '../core/models/trip.dart';
 import '../core/models/trip_expense.dart';
+import '../core/models/trip_stop.dart';
 import '../core/money/money.dart';
 import '../core/ui/empty_state.dart';
 import '../core/ui/format.dart';
 import 'trip_expense_form_screen.dart';
 import 'trip_providers.dart';
-import 'trip_roadmap_tab.dart';
+import 'trip_colors.dart';
 
 /// A member's name for display: "You" for the signed-in person, the saved name
 /// for a member, the bare email for someone who has since been removed.
@@ -33,6 +34,9 @@ class TripExpensesTab extends ConsumerStatefulWidget {
 class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
   bool _byStop = true;
 
+  /// The category being filtered on; null shows everything.
+  StopType? _filter;
+
   Trip get trip => widget.trip;
 
   @override
@@ -43,7 +47,8 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
     return expenses.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Could not load expenses: $e')),
-      data: (list) {
+      data: (loaded) {
+        var list = loaded;
         if (list.isEmpty) {
           return EmptyState(
             icon: Icons.receipt_long_outlined,
@@ -55,18 +60,25 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
           );
         }
         final stopById = {for (final s in stops) s.id: s};
-        final total = list.fold(Money.zero, (a, e) => a + e.amount);
-        final byCategory = <String, Money>{};
+        final byCategory = <StopType, Money>{};
         for (final e in list) {
-          final c = e.category ?? 'Other';
-          byCategory[c] = (byCategory[c] ?? Money.zero) + e.amount;
+          final t = categoryType(e.category);
+          byCategory[t] = (byCategory[t] ?? Money.zero) + e.amount;
         }
+        // The filtered category may have just lost its last expense.
+        final filter = byCategory.containsKey(_filter) ? _filter : null;
+        final all = list;
+        list = filter == null
+            ? all
+            : all.where((e) => categoryType(e.category) == filter).toList();
+        final total = list.fold(Money.zero, (a, e) => a + e.amount);
 
         Widget tile(TripExpense e) => ListTile(
+          leading: categoryAvatar(context, e.category),
           title: Text(e.title),
           subtitle: Text(
             [
-              if (e.category != null) e.category!,
+              categoryLabel(e.category),
               '${memberLabel(trip, e.paidBy, me)} paid',
               formatShortDate(e.date),
               'split ${e.shares.length} ${e.shares.length == 1 ? 'way' : 'ways'}',
@@ -89,7 +101,9 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
 
         final children = <Widget>[
           ListTile(
-            title: const Text('Total spent'),
+            title: Text(
+              filter == null ? 'Total spent' : '${stopTypeLabel(filter)} total',
+            ),
             trailing: Text(
               total.format(),
               style: Theme.of(context).textTheme.titleLarge,
@@ -100,11 +114,34 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                for (final c in byCategory.entries)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Chip(label: Text('${c.key} ${c.value.format()}')),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: const Text('All'),
+                    selected: filter == null,
+                    onSelected: (_) => setState(() => _filter = null),
                   ),
+                ),
+                for (final t in StopType.values)
+                  if (byCategory.containsKey(t))
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        avatar: Icon(
+                          stopIcon(t),
+                          size: 18,
+                          color: categoryForeground(context, stopTypeColor(t)),
+                        ),
+                        label: Text(
+                          '${stopTypeLabel(t)} ${byCategory[t]!.format()}',
+                        ),
+                        selected: filter == t,
+                        showCheckmark: false,
+                        selectedColor: categoryBackground(stopTypeColor(t)),
+                        onSelected: (_) =>
+                            setState(() => _filter = filter == t ? null : t),
+                      ),
+                    ),
               ],
             ),
           ),
@@ -129,7 +166,13 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
             final mine = list.where((e) => e.stopId == s.id).toList();
             if (mine.isEmpty) continue;
             children.add(
-              _header(context, s.title, mine, icon: stopIcon(s.type)),
+              _header(
+                context,
+                s.title,
+                mine,
+                icon: stopIcon(s.type),
+                color: categoryForeground(context, stopTypeColor(s.type)),
+              ),
             );
             children.addAll(mine.map(tile));
           }
@@ -156,6 +199,7 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
     String title,
     List<TripExpense> items, {
     IconData? icon,
+    Color? color,
   }) {
     final sum = items.fold(Money.zero, (a, e) => a + e.amount);
     final style = Theme.of(context).textTheme.titleSmall;
@@ -163,7 +207,7 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Row(
         children: [
-          Icon(icon ?? Icons.layers_outlined, size: 18),
+          Icon(icon ?? Icons.layers_outlined, size: 18, color: color),
           const SizedBox(width: 8),
           Expanded(child: Text(title, style: style)),
           Text(sum.format(), style: style),
@@ -194,14 +238,36 @@ void showExpenseDetail(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(e.title, style: Theme.of(context).textTheme.titleLarge),
-            if (e.category != null || stopTitle != null)
-              Text(
-                [
-                  ?e.category,
-                  if (stopTitle != null) 'at $stopTitle',
-                ].join(' · '),
-                style: Theme.of(context).textTheme.bodySmall,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Chip(
+                    avatar: Icon(
+                      categoryIcon(e.category),
+                      size: 16,
+                      color: categoryForeground(
+                        context,
+                        categoryColor(e.category),
+                      ),
+                    ),
+                    label: Text(categoryLabel(e.category)),
+                    backgroundColor: categoryBackground(
+                      categoryColor(e.category),
+                    ),
+                    side: BorderSide.none,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  if (stopTitle != null)
+                    Text(
+                      'at $stopTitle',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ),
+            ),
             Text(
               '${e.amount.format()} paid by ${memberLabel(trip, e.paidBy, me)}'
               ' · ${splitModeLabel(e.mode)}',
